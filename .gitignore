@@ -1,0 +1,27 @@
+# 便携 AI 工作台 —— git 忽略规则
+#
+# 原则：仓库里只放"我们自己写的、改了要能追溯"的东西。
+# 下面这些都能重新下载，体积还以 GB 计，git 备份它们没有意义，
+# 用 _tools\install.ps1 一键拉回来即可。
+
+# --- 可重新下载的大块头 ---
+/bin/
+/models/
+/py/
+
+# --- 运行时产生的东西 ---
+/work/
+__pycache__/
+*.pyc
+*.log
+# 体检的磁盘测速缓存（过期自己会重测）
+work/disk_speed.json
+
+# --- 本机/编辑器杂物 ---
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+*.tmp
+# koboldcpp 解包出来的运行库（放这里是为了不占系统盘）
+/_extract/

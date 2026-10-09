@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>便携 AI 工作台 · 模型管家</title>
+<style>
+  :root {
+    --bg: #14161a; --panel: #1c1f26; --panel-2: #23272f; --line: #31363f;
+    --text: #e6e8ec; --muted: #8b93a1; --accent: #4c8dff;
+    --ok: #7fd18a; --warn: #ffb454; --err: #ff9d9d;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 15px/1.7 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 11px 18px; background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  .brand { font-weight: 600; }
+  a.back { color: var(--accent); text-decoration: none; font-size: 13px; margin-right: auto;
+           border: 1px solid var(--line); border-radius: 8px; padding: 6px 11px; background: var(--panel-2); }
+  a.back:hover { background: #2b303a; }
+  button {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 15px; font: inherit; font-size: 14px; cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: #4a5262; background: #2b303a; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover:not(:disabled) { background: #3f7ff0; }
+
+  main { flex: 1; overflow-y: auto; padding: 18px; }
+  .wrap { max-width: 840px; margin: 0 auto; }
+
+  .banner {
+    border-radius: 10px; padding: 13px 17px; margin-bottom: 14px; font-size: 14px;
+    line-height: 1.8;
+  }
+  .banner.loading { background: #262b1f; border: 1px solid #3c4a2f; border-left: 4px solid var(--warn); }
+  .banner.err { background: #2a1e21; border: 1px solid #4a2f34; border-left: 4px solid var(--err); }
+  .banner.info { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--accent); color: var(--muted); }
+  .banner b { color: var(--text); }
+  .btnrow { margin-top: 10px; display: flex; gap: 9px; }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 15px 17px; margin-bottom: 11px; display: flex; gap: 14px; align-items: center;
+  }
+  .card.active { border-color: #3c5a3c; background: #1b211b; }
+  .info { flex: 1; min-width: 0; }
+  .fname { font-weight: 600; font-size: 15.5px; word-break: break-all; }
+  .fmeta { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .tag {
+    display: inline-block; font-size: 12px; padding: 2px 9px; border-radius: 999px;
+    border: 1px solid #3c5a3c; color: var(--ok); margin-left: 8px; vertical-align: 2px;
+  }
+  .idle { text-align: center; color: var(--muted); margin-top: 12vh; line-height: 2.2; }
+  .idle .big { font-size: 46px; margin-bottom: 10px; }
+  .note { color: var(--muted); font-size: 12.5px; }
+  .mono { font-family: "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+  .spin {
+    display: inline-block; width: 13px; height: 13px; border: 2px solid #6b7f4a;
+    border-top-color: #cfe3ac; border-radius: 50%; animation: sp .8s linear infinite;
+    margin-right: 7px; vertical-align: -2px;
+  }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  .elapsed { color: var(--warn); }
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="/">← 回首页</a>
+  <div class="brand">模型管家</div>
+  <button id="reload">刷新</button>
+</header>
+<main>
+  <div class="wrap" id="out">
+    <div class="idle"><div class="big">🧩</div>正在读取模型列表…</div>
+  </div>
+</main>
+
+<script>
+(function () {
+  var out = document.getElementById('out');
+  var btn = document.getElementById('reload');
+  var pollTimer = null;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  function render(d) {
+    var h = '';
+    var list = d.models || [];
+    var loading = !!d.loading;
+    var curPath = d.loaded_path || (d.current ? d.current.path : null);
+
+    if (loading) {
+      var started = d.loading_started ? new Date(d.loading_started.replace(/-/g, '/')) : null;
+      var secs = started ? Math.max(0, Math.round((Date.now() - started.getTime()) / 1000)) : null;
+      h += '<div class="banner loading"><span class="spin"></span>'
+         + '<b>正在换成 ' + esc(d.loading_name || d.loading_path || '新模型') + ' …</b><br>'
+         + '正在停掉旧的、加载新的。这个盘冷读 2.3 GB 模型要 1~4 分钟，请耐心等，'
+         + '<b>千万不要关那个黑窗口</b>。'
+         + (secs != null ? '<br>已经等了 <span class="elapsed">' + secs + ' 秒</span>。' : '')
+         + '</div>';
+    } else if (d.error) {
+      h += '<div class="banner err"><b>上次换模型失败了：</b><br>' + esc(d.error)
+         + '<div class="btnrow"><button id="clearErr">知道了</button></div></div>';
+    }
+
+    if (!list.length) {
+      h += '<div class="idle" style="margin-top:6vh"><div class="big">📂</div>'
+         + '<span class="mono">models\\</span> 里还没有 gguf 模型文件。<br>'
+         + '<span class="note">把一个 .gguf 文件放进去，再点右上角刷新。'
+         + '注意这个盘是 FAT32，单个文件不能超过 4 GB。</span></div>';
+      out.innerHTML = h;
+      bind(d);
+      return;
+    }
+
+    h += '<div class="note" style="margin:4px 2px 10px">共 ' + list.length + ' 个模型'
+       + (d.last_backend ? '　上次用的后端：' + esc(String(d.last_backend).replace('koboldcpp', '').replace('.exe', '') || 'cpu') : '')
+       + '</div>';
+
+    list.forEach(function (m) {
+      var isCur = !!m.current;
+      h += '<div class="card' + (isCur ? ' active' : '') + '">'
+         + '<div class="info">'
+         + '<div class="fname">' + esc(m.name) + (isCur ? '<span class="tag">正在使用</span>' : '') + '</div>'
+         + '<div class="fmeta">' + esc(m.size_gb) + ' GB'
+         + (isCur && d.current && d.current.n_ctx ? '　上下文 ' + esc(d.current.n_ctx) : '')
+         + '　<span class="mono">models\\' + esc(m.name) + '</span></div>'
+         + '</div>'
+         + '<button data-file="' + esc(m.name) + '"' + (isCur || loading ? ' disabled' : '') + '>'
+         + (isCur ? '正在用' : '换成这个') + '</button>'
+         + '</div>';
+    });
+
+    if (d.kobold === false) {
+      h += '<div class="banner err">模型服务现在没有在跑。请用「启动.bat」把它启动起来，'
+         + '否则换模型也没意义。</div>';
+    }
+
+    out.innerHTML = h;
+    bind(d);
+  }
+
+  function bind(d) {
+    Array.prototype.forEach.call(out.querySelectorAll('button[data-file]'), function (b) {
+      b.addEventListener('click', function () { switchTo(b.getAttribute('data-file')); });
+    });
+    var ce = document.getElementById('clearErr');
+    if (ce) ce.addEventListener('click', function () { load(); });
+  }
+
+  function load() {
+    return fetch('/api/models', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        render(d);
+        if (d.loading) startPolling(); else stopPolling();
+        return d;
+      })
+      .catch(function (e) {
+        out.innerHTML = '<div class="banner err"><b>读不到模型列表：</b>' + esc(e.message)
+          + '<br>工作台后端可能没在跑。</div>';
+      });
+  }
+
+  function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(function () { load(); }, 2000);
+  }
+  function stopPolling() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  }
+
+  function switchTo(file) {
+    if (!confirm('换成「' + file + '」？\n\n要先停掉当前模型再加载新的，这个盘大约要 1~4 分钟。\n'
+               + '期间不能对话，但页面会自动刷新进度。')) return;
+    out.innerHTML = '<div class="banner loading"><span class="spin"></span>'
+      + '<b>正在换成 ' + esc(file) + ' …</b><br>已经派出去干了。'
+      + '千万不要关那个黑窗口。</div>';
+    fetch('/api/model/switch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file: file })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.ok) {
+          out.innerHTML = '<div class="banner err"><b>换不了：</b>' + esc(d.error || d.summary || '未知错误')
+            + '<div class="btnrow"><button id="clearErr">返回</button></div></div>';
+          bind({});
+          return;
+        }
+        startPolling();
+        load();
+      })
+      .catch(function (e) {
+        out.innerHTML = '<div class="banner err"><b>请求失败：</b>' + esc(e.message)
+          + '<div class="btnrow"><button id="clearErr">返回</button></div></div>';
+        bind({});
+      });
+  }
+
+  btn.addEventListener('click', function () { stopPolling(); load(); });
+  window.addEventListener('beforeunload', stopPolling);
+  load();
+})();
+</script>
+</body>
+</html>

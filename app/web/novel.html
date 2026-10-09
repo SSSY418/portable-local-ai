@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>便携 AI 工作台 · 写小说</title>
+<style>
+  :root {
+    --bg: #14161a; --panel: #1c1f26; --panel-2: #23272f; --line: #31363f;
+    --text: #e6e8ec; --muted: #8b93a1; --accent: #4c8dff;
+    --ok: #7fd18a; --warn: #ffb454; --err: #ff9d9d;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 15px/1.7 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  .brand { font-weight: 600; }
+  a.back { color: var(--accent); text-decoration: none; font-size: 13px; margin-right: auto;
+           border: 1px solid var(--line); border-radius: 8px; padding: 6px 11px; background: var(--panel-2); }
+  a.back:hover { background: #2b303a; }
+  button {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 7px 13px; font: inherit; font-size: 13.5px; cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: #4a5262; background: #2b303a; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover:not(:disabled) { background: #3f7ff0; }
+
+  main { flex: 1; display: flex; min-height: 0; }
+  .side {
+    width: 268px; flex: 0 0 268px; border-right: 1px solid var(--line);
+    background: var(--panel); overflow-y: auto; padding: 10px 0;
+  }
+  .side h3 {
+    margin: 10px 14px 6px; font-size: 12px; color: var(--muted); font-weight: 500;
+    text-transform: none; letter-spacing: .5px;
+  }
+  .item {
+    padding: 6px 14px; cursor: pointer; font-size: 13.5px; color: #cbd2dd;
+    display: flex; align-items: center; gap: 7px; border-left: 3px solid transparent;
+  }
+  .item:hover { background: var(--panel-2); }
+  .item.active { background: #232b38; border-left-color: var(--accent); color: #fff; }
+  .item .sz { margin-left: auto; color: #5f6874; font-size: 11.5px; }
+  .grp { padding: 8px 14px 2px; font-size: 12.5px; color: #9aa3b1; font-weight: 600; }
+  .sub { padding-left: 26px; }
+
+  .pane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .bar {
+    display: flex; align-items: center; gap: 10px; padding: 9px 14px;
+    border-bottom: 1px solid var(--line); background: var(--panel-2); flex-wrap: wrap;
+  }
+  .path { color: var(--muted); font-size: 13px; }
+  .path b { color: var(--text); }
+  .spacer { margin-left: auto; }
+  .dirty { color: var(--warn); font-size: 12.5px; }
+  textarea {
+    flex: 1; width: 100%; resize: none; border: none; outline: none;
+    background: var(--bg); color: var(--text); padding: 18px 22px;
+    font: 15px/1.8 "Cascadia Mono", Consolas, "Microsoft YaHei", monospace;
+  }
+  .hint { padding: 12px 20px; color: var(--muted); font-size: 13px; line-height: 2; }
+  .hint code { background: #0f1115; border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; }
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+    background: #26303f; border: 1px solid #3c4a5e; color: var(--text);
+    padding: 9px 18px; border-radius: 9px; font-size: 13.5px; opacity: 0;
+    transition: opacity .25s; pointer-events: none; z-index: 10;
+  }
+  .toast.show { opacity: 1; }
+  .toast.err { background: #35262a; border-color: #5c3a3f; color: var(--err); }
+  dialog {
+    border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+    color: var(--text); padding: 20px; max-width: 420px; width: 90%;
+  }
+  dialog::backdrop { background: rgba(0,0,0,.55); }
+  dialog h2 { margin: 0 0 10px; font-size: 16px; }
+  dialog p { color: var(--muted); font-size: 13.5px; margin: 0 0 14px; line-height: 1.8; }
+  dialog input {
+    width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 9px 12px; font: inherit; margin-bottom: 14px;
+  }
+  dialog .row { display: flex; gap: 10px; justify-content: flex-end; }
+  @media (max-width: 700px) { .side { width: 190px; flex-basis: 190px; } }
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="/">← 回首页</a>
+  <div class="brand">写小说</div>
+  <button id="newBtn" class="primary">新建小说</button>
+  <button id="reloadBtn">刷新</button>
+</header>
+
+<main>
+  <aside class="side" id="side"><div class="hint">读取中…</div></aside>
+  <section class="pane">
+    <div class="bar">
+      <span class="path" id="pathLabel">没选中文件</span>
+      <span class="dirty" id="dirtyLabel"></span>
+      <span class="spacer"></span>
+      <button id="saveBtn" disabled>保存</button>
+    </div>
+    <textarea id="editor" spellcheck="false" placeholder="在左边选一个文件开始写，或者点「新建小说」按模板建一本。"></textarea>
+    <div class="hint" id="hint">
+      用法：先在 <code>设定卡.md</code> 里把人物和文风定下来，再填 <code>单元01/大纲.md</code>，
+      然后去「对话」页让它一<strong>节</strong>一<strong>节</strong>写，写完把正文贴回对应的 <code>第NN节.md</code>。
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<dialog id="dlg">
+  <h2>新建小说</h2>
+  <p>会按模板建 3 个单元（每个单元 1 份大纲 + 8 节正文）和 1 张设定卡，共 28 个文件。<br>填个名字就行，比如「铁西区往事」。</p>
+  <input id="novelName" placeholder="作品名" autocomplete="off">
+  <div class="row">
+    <button id="dlgCancel">取消</button>
+    <button id="dlgOk" class="primary">创建</button>
+  </div>
+</dialog>
+
+<script>
+(function () {
+  var sideEl = document.getElementById('side');
+  var editor = document.getElementById('editor');
+  var pathLabel = document.getElementById('pathLabel');
+  var dirtyLabel = document.getElementById('dirtyLabel');
+  var saveBtn = document.getElementById('saveBtn');
+  var toastEl = document.getElementById('toast');
+  var dlg = document.getElementById('dlg');
+
+  var current = null;      // {novel, path}
+  var dirty = false;
+  var toastTimer = null;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  function toast(msg, isErr) {
+    toastEl.textContent = msg;
+    toastEl.className = 'toast show' + (isErr ? ' err' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.className = 'toast'; }, 2600);
+  }
+  function fmtSize(n) {
+    if (n == null) return '';
+    return n < 1024 ? n + 'B' : (n / 1024).toFixed(1) + 'K';
+  }
+  function api(path, body) {
+    var opt = body
+      ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+      : {};
+    return fetch(path, opt).then(function (r) {
+      return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+    }).then(function (res) {
+      if (!res.ok || res.d.ok === false) throw new Error(res.d.error || ('HTTP ' + (res.d.code || '')));
+      return res.d;
+    });
+  }
+
+  function setDirty(v) {
+    dirty = v;
+    dirtyLabel.textContent = v ? '未保存' : '';
+    saveBtn.disabled = !v || !current;
+  }
+
+  function render(data) {
+    var h = '';
+    var novels = data.novels || [];
+    var tpl = data.templates || [];
+
+    h += '<h3>作品（' + novels.length + '）</h3>';
+    if (!novels.length) {
+      h += '<div class="hint" style="padding:6px 14px">还没有作品。<br>点右上角「新建小说」。</div>';
+    }
+    novels.forEach(function (nv) {
+      h += '<div class="grp">' + esc(nv.name) + '</div>';
+      nv.files.forEach(function (f) {
+        h += '<div class="item sub" data-novel="' + esc(nv.name) + '" data-path="' + esc(f.path) + '">'
+           + '<span>' + esc(f.path) + '</span><span class="sz">' + fmtSize(f.size) + '</span></div>';
+      });
+    });
+
+    h += '<h3 style="margin-top:16px">模板（只读，改不了）</h3>';
+    tpl.forEach(function (f) {
+      h += '<div class="item" data-novel="模板" data-path="' + esc(f.name) + '">'
+         + '<span>' + esc(f.name) + '</span><span class="sz">' + fmtSize(f.size) + '</span></div>';
+    });
+
+    sideEl.innerHTML = h;
+    Array.prototype.forEach.call(sideEl.querySelectorAll('.item'), function (el) {
+      el.addEventListener('click', function () {
+        if (dirty && !confirm('当前文件还没保存，放弃修改吗？')) return;
+        open(el.getAttribute('data-novel'), el.getAttribute('data-path'));
+      });
+    });
+    markActive();
+  }
+
+  function markActive() {
+    Array.prototype.forEach.call(sideEl.querySelectorAll('.item'), function (el) {
+      var on = current && el.getAttribute('data-novel') === current.novel
+            && el.getAttribute('data-path') === current.path;
+      el.classList.toggle('active', !!on);
+    });
+  }
+
+  function open(novel, path) {
+    return api('/api/novel/read', { novel: novel, path: path })
+      .then(function (d) {
+        current = { novel: novel, path: path };
+        editor.value = d.text || '';
+        pathLabel.innerHTML = '<b>' + esc(novel) + '</b> / ' + esc(path);
+        setDirty(false);
+        markActive();
+      })
+      .catch(function (e) { toast('读不了：' + e.message, true); });
+  }
+
+  function load() {
+    return api('/api/novels').then(render).catch(function (e) {
+      sideEl.innerHTML = '<div class="hint">读不到小说目录：' + esc(e.message) + '</div>';
+    });
+  }
+
+  function save() {
+    if (!current) return;
+    saveBtn.disabled = true;
+    api('/api/novel/save', { novel: current.novel, path: current.path, text: editor.value })
+      .then(function (d) { setDirty(false); toast(d.message || '已保存'); return load(); })
+      .catch(function (e) { toast('保存失败：' + e.message, true); saveBtn.disabled = false; });
+  }
+
+  editor.addEventListener('input', function () { if (!dirty) setDirty(true); });
+  editor.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (dirty) save(); }
+  });
+  saveBtn.addEventListener('click', save);
+  document.getElementById('reloadBtn').addEventListener('click', function () {
+    if (dirty && !confirm('当前文件还没保存，放弃修改吗？')) return;
+    load();
+  });
+
+  document.getElementById('newBtn').addEventListener('click', function () {
+    document.getElementById('novelName').value = '';
+    dlg.showModal();
+    document.getElementById('novelName').focus();
+  });
+  document.getElementById('dlgCancel').addEventListener('click', function () { dlg.close(); });
+  document.getElementById('dlgOk').addEventListener('click', function () {
+    var name = document.getElementById('novelName').value.trim();
+    if (!name) { toast('先起个名字', true); return; }
+    api('/api/novel/create', { name: name })
+      .then(function (d) { dlg.close(); toast(d.message || '已创建'); return load(); })
+      .catch(function (e) { toast('创建失败：' + e.message, true); });
+  });
+  document.getElementById('novelName').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') document.getElementById('dlgOk').click();
+  });
+
+  window.addEventListener('beforeunload', function (e) {
+    if (dirty) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>便携 AI 工作台 · 体检</title>
+<style>
+  :root {
+    --bg: #14161a; --panel: #1c1f26; --panel-2: #23272f; --line: #31363f;
+    --text: #e6e8ec; --muted: #8b93a1; --accent: #4c8dff;
+    --ok: #7fd18a; --warn: #ffb454; --err: #ff9d9d;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 15px/1.7 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 12px 18px; background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  .brand { font-weight: 600; }
+  .back { color: var(--accent); text-decoration: none; font-size: 13px; margin-right: auto; }
+  .back:hover { text-decoration: underline; }
+  button {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 16px; font: inherit; font-size: 14px; cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: #4a5262; background: #2b303a; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover:not(:disabled) { background: #3f7ff0; }
+
+  main { flex: 1; overflow-y: auto; padding: 18px; }
+  .wrap { max-width: 860px; margin: 0 auto; }
+
+  .idle { text-align: center; color: var(--muted); margin-top: 14vh; line-height: 2.2; }
+  .idle .big { font-size: 46px; margin-bottom: 10px; }
+
+  .conclusion {
+    background: #1d2419; border: 1px solid #38452f; border-left: 4px solid var(--ok);
+    border-radius: 10px; padding: 14px 18px; margin-bottom: 16px;
+  }
+  .conclusion.warn { background: #262219; border-color: #4a3f28; border-left-color: var(--warn); }
+  .conclusion.err  { background: #2a1e21; border-color: #4a2f34; border-left-color: var(--err); }
+  .conclusion h2 { margin: 0 0 6px; font-size: 14px; color: var(--muted); font-weight: 500; }
+  .conclusion p { margin: 0; font-size: 15.5px; line-height: 1.75; }
+
+  details {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    margin-bottom: 10px; overflow: hidden;
+  }
+  details[open] summary { border-bottom: 1px solid var(--line); }
+  summary {
+    cursor: pointer; padding: 12px 16px; font-weight: 500; font-size: 14.5px;
+    list-style: none; display: flex; align-items: center; gap: 9px;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "▸"; color: var(--muted); font-size: 12px; }
+  details[open] summary::before { content: "▾"; }
+  .rows { padding: 12px 16px 14px; }
+  .row { display: flex; gap: 12px; padding: 4px 0; align-items: baseline; }
+  .k { flex: 0 0 132px; color: var(--muted); font-size: 13.5px; }
+  .v { flex: 1; min-width: 0; word-break: break-word; }
+  .v b { font-weight: 600; }
+  .ok { color: var(--ok); }
+  .warn { color: var(--warn); }
+  .err { color: var(--err); }
+  .mono { font-family: "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; font-size: 12.5px; }
+  td.num { text-align: right; font-family: "Cascadia Mono", Consolas, monospace; }
+  tr:last-child td { border-bottom: none; }
+  .bar {
+    height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden;
+    margin-top: 5px; border: 1px solid var(--line);
+  }
+  .bar > i { display: block; height: 100%; background: var(--accent); }
+  .bar > i.warn { background: var(--warn); }
+  .bar > i.err { background: var(--err); }
+  .note { color: var(--muted); font-size: 12.5px; }
+  .spin {
+    display: inline-block; width: 13px; height: 13px; border: 2px solid #48566e;
+    border-top-color: var(--accent); border-radius: 50%; animation: sp .8s linear infinite;
+  }
+  @keyframes sp { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="/">← 回首页</a>
+  <div class="brand">体检</div>
+  <button id="runBtn" class="primary">开始体检</button>
+</header>
+
+<main>
+  <div class="wrap" id="out">
+    <div class="idle">
+      <div class="big">🩺</div>
+      点右上角「开始体检」，检查这台电脑的状态。<br>
+      <span class="note">全程只读信息，不会改动你的系统；第一次会顺带测一下磁盘速度，约十几秒。</span>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  var out = document.getElementById('out');
+  var btn = document.getElementById('runBtn');
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  function row(k, v) {
+    if (v == null || v === '') return '';
+    return '<div class="row"><div class="k">' + esc(k) + '</div><div class="v">' + v + '</div></div>';
+  }
+  function sec(title, body, open) {
+    if (!body) return '';
+    return '<details' + (open ? ' open' : '') + '><summary>' + esc(title) + '</summary><div class="rows">' + body + '</div></details>';
+  }
+  function bar(pct, warnAt, errAt) {
+    var p = Math.max(0, Math.min(100, Number(pct) || 0));
+    var cls = p >= errAt ? ' err' : (p >= warnAt ? ' warn' : '');
+    return '<div class="bar"><i class="' + cls.trim() + '" style="width:' + p + '%"></i></div>';
+  }
+  function num(v, unit, digits) {
+    if (v == null) return '-';
+    return Number(v).toFixed(digits == null ? 1 : digits) + (unit || '');
+  }
+
+  function render(d) {
+    var h = '';
+
+    // ---------- 结论 ----------
+    var cls = 'conclusion';
+    var c = d.conclusion || '';
+    if (/没在跑|不够|偏紧|失败|偏热|占用 9|用掉 8|用掉 9/.test(c)) cls += /没在跑/.test(c) ? ' err' : ' warn';
+    h += '<div class="' + cls + '"><h2>一句话结论</h2><p>' + esc(c || '（没给出结论）') + '</p></div>';
+
+    h += '<div class="note" style="margin:0 0 14px 2px">体检时间：' + esc(d.generated_at || '-') + '</div>';
+
+    // ---------- 模型服务 ----------
+    var svc = d.model_service || {};
+    var sb = row('状态', svc.running
+      ? '<b class="ok">正在运行</b> v' + esc((svc.detail || {}).version || '?')
+      : '<b class="err">没有运行</b>');
+    sb += row('地址', '<span class="mono">' + esc(svc.url || '') + '</span>');
+    if ((svc.models || []).length) {
+      sb += row('本地模型', svc.models.map(function (m) {
+        return esc(m.name) + ' <span class="note">' + m.size_gb + ' GB</span>';
+      }).join('<br>'));
+    }
+    h += sec('模型服务', sb, true);
+
+    // ---------- CPU ----------
+    var cpu = d.cpu || {};
+    if (cpu.ok) {
+      var cb = row('型号', esc(cpu.name));
+      cb += row('核心', esc(cpu.cores) + ' 核 / ' + esc(cpu.threads) + ' 线程');
+      cb += row('当前占用', '<b>' + num(cpu.load_percent, '%') + '</b>' + bar(cpu.load_percent, 75, 90));
+      h += sec('CPU', cb);
+    } else {
+      h += sec('CPU', row('结果', '<span class="warn">' + esc(cpu.note || '读取失败') + '</span>'));
+    }
+
+    // ---------- 内存 ----------
+    var mem = d.memory || {};
+    if (mem.ok) {
+      var mb = row('总量', '<b>' + num(mem.total_gb, ' GB', 2) + '</b>');
+      mb += row('已用', num(mem.used_gb, ' GB', 2) + '（' + num(mem.used_percent, '%') + '）'
+                + bar(mem.used_percent, 75, 90));
+      mb += row('还剩', '<b class="' + (mem.free_gb < 1.5 ? 'warn' : 'ok') + '">'
+                + num(mem.free_gb, ' GB', 2) + '</b>');
+      if (mem.pagefile) {
+        mb += row('虚拟内存', esc(mem.pagefile.name) + '　分配 ' + num(mem.pagefile.allocated_gb, ' GB', 2)
+                  + '，已用 ' + num(mem.pagefile.used_gb, ' GB', 2));
+      }
+      h += sec('内存', mb);
+    } else {
+      h += sec('内存', row('结果', '<span class="warn">' + esc(mem.note || '读取失败') + '</span>'));
+    }
+
+    // ---------- 显卡 ----------
+    var gpu = d.gpu || {};
+    var gb = '';
+    if (gpu.primary) gb += row('谁在干活', '<b>' + esc(gpu.primary) + '</b>');
+    (gpu.cards || []).forEach(function (c2) {
+      var t = '型号 <b>' + esc(c2.name) + '</b>';
+      if (c2.driver_version) t += '　驱动 ' + esc(c2.driver_version);
+      if (c2.driver_date) t += '（' + esc(c2.driver_date) + '）';
+      if (c2.resolution) t += '　输出 ' + esc(c2.resolution);
+      gb += row(c2.name && /nvidia/i.test(c2.name) ? '独显' : '显卡', t);
+    });
+    var nv = gpu.nvidia;
+    if (nv) {
+      gb += row('显存', '<b>' + num(nv.vram_used_gb, ' GB', 2) + ' / ' + num(nv.vram_total_gb, ' GB', 2)
+                + '</b>（' + num(nv.vram_used_percent, '%') + '）' + bar(nv.vram_used_percent, 80, 92));
+      gb += row('GPU 占用', num(nv.utilization_percent, '%') + '　温度 ' + num(nv.temperature_c, ' ℃', 0));
+    }
+    (gpu.notes || []).forEach(function (n) { gb += row('', '<span class="note">' + esc(n) + '</span>'); });
+    h += sec('显卡', gb);
+
+    // ---------- 磁盘 ----------
+    var disk = d.disk || {};
+    var pv = disk.project_volume || {};
+    var db = '';
+    if (pv.ok) {
+      db += row('项目所在盘', '<b class="mono">' + esc(pv.drive) + '</b>　' + esc(pv.disk_model || ''));
+      db += row('容量', '共 ' + num(pv.total_gb, ' GB') + '，已用 ' + num(pv.used_gb, ' GB'));
+      db += row('剩余', '<b class="' + (pv.free_gb < 6 ? 'warn' : 'ok') + '">' + num(pv.free_gb, ' GB')
+                + '</b>（' + num(pv.free_percent, '%') + '）' + bar(100 - pv.free_percent, 85, 95));
+      if (pv.kind) {
+        db += row('固态还是机械', '<b>' + esc(pv.kind) + '</b>'
+                  + (pv.kind_source ? ' <span class="note">（' + esc(pv.kind_source) + '）</span>' : ''));
+      } else if (pv.kind_note) {
+        db += row('固态还是机械', '<span class="note">' + esc(pv.kind_note) + '</span>');
+      }
+    }
+    var st = disk.speed_test || {};
+    if (st.measured) {
+      db += row('实测写入速度', '<b>' + num(st.seq_write_mbps, ' MB/s') + '</b>　随机写延迟 '
+                + num(st.rand_write_latency_ms, ' ms', 2) + '<span class="note">（' + esc(st.measured_at || '') + '，缓存 7 天）</span>');
+    }
+    (disk.volumes || []).forEach(function (v) {
+      if (pv.drive && String(v.drive).toUpperCase() === String(pv.drive).toUpperCase()) return;
+      db += row(v.drive + ' ' + (v.label || ''), '剩 ' + num(v.free_gb, ' GB') + ' / 共 '
+                + num(v.total_gb, ' GB') + '（' + num(v.free_percent, '%') + '）');
+    });
+    (disk.notes || []).forEach(function (n) { db += row('', '<span class="warn">' + esc(n) + '</span>'); });
+    h += sec('磁盘', db);
+
+    // ---------- 占资源的进程 ----------
+    var proc = d.processes || {};
+    if (proc.ok) {
+      var pb = '<table><tr><th>进程</th><th style="text-align:right">内存</th>'
+             + '<th style="text-align:right">CPU 累计</th><th style="text-align:right">PID</th></tr>';
+      (proc.items || []).forEach(function (p) {
+        pb += '<tr><td>' + esc(p.name) + '</td><td class="num">' + num(p.mem_mb, ' MB', 0)
+            + '</td><td class="num">' + num(p.cpu_seconds, ' s') + '</td><td class="num">'
+            + esc(p.pid) + '</td></tr>';
+      });
+      pb += '</table>';
+      pb += '<div class="note" style="margin-top:8px">共 ' + esc(proc.total_processes || 0)
+          + ' 个进程。这里只列出来看看，脚本不会关掉任何进程。</div>';
+      (proc.duplicate_groups || []).forEach(function (g) {
+        pb += '<div class="note">同一个程序开了 ' + esc(g.count) + ' 个：' + esc(g.name) + '</div>';
+      });
+      h += sec('最占资源的进程（前 5）', pb);
+    } else {
+      h += sec('进程', row('结果', '<span class="warn">' + esc(proc.note || '读取失败') + '</span>'));
+    }
+
+    out.innerHTML = h;
+  }
+
+  function run() {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin"></span> 正在体检…';
+    out.innerHTML = '<div class="idle"><div class="big">⏳</div>正在采集数据，请稍候…<br>'
+                  + '<span class="note">第一次会测磁盘速度，大概十几秒。</span></div>';
+    fetch('/api/status', { cache: 'no-store' })
+      .then(function (r) {
+        return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+      })
+      .then(function (res) {
+        var d = res.d || {};
+        if (!res.ok || d.ok === false) {
+          out.innerHTML = '<div class="conclusion err"><h2>体检失败</h2><p>'
+            + esc(d.error || '后端没有返回报告') + '</p></div>'
+            + (d.stderr ? '<div class="rows"><pre class="mono">' + esc(d.stderr) + '</pre></div>' : '');
+          return;
+        }
+        render(d);
+      })
+      .catch(function (e) {
+        out.innerHTML = '<div class="conclusion err"><h2>体检失败</h2><p>' + esc(e.message) + '</p></div>';
+      })
+      .then(function () {
+        btn.disabled = false;
+        btn.textContent = '重新体检';
+      });
+  }
+
+  btn.addEventListener('click', run);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "note": "技能清单。router.py 会把它交给本地模型，让模型挑一个技能并给出参数；workbench.py 的 /api/skill/run 负责真正执行，并且会再校验一遍参数。",
+  "skills": [
+    {
+      "id": "status",
+      "title": "体检",
+      "script": "status.py",
+      "description": "检查这台电脑的状态：CPU 占用、内存占用、显卡型号与显存、磁盘剩余空间和是固态还是机械、最占资源的进程，最后给一句结论。不需要参数。",
+      "actions": {
+        "run": {
+          "description": "跑一次完整体检",
+          "args": [],
+          "readonly": true
+        }
+      },
+      "examples": [
+        "帮我看看电脑卡不卡",
+        "体检一下",
+        "显卡用上了吗"
+      ]
+    },
+    {
+      "id": "modelctl",
+      "title": "模型管家",
+      "script": "modelctl.py",
+      "description": "管理本地模型：列出有哪些模型、看当前加载的是哪个、或者换一个模型。换模型要 1~2 分钟。",
+      "actions": {
+        "list": {
+          "description": "列出 models 目录里所有模型，并标出当前用的是哪个",
+          "args": [],
+          "readonly": true
+        },
+        "current": {
+          "description": "报告当前正在加载/使用的模型",
+          "args": [],
+          "readonly": true
+        },
+        "switch": {
+          "description": "切换到指定的模型文件。会先停掉当前的模型服务再重新启动。",
+          "args": ["file"],
+          "file_arg": "file",
+          "readonly": false
+        }
+      },
+      "examples": [
+        "有哪些模型",
+        "现在用的是哪个模型",
+        "换成 <模型文件名>.gguf"
+      ]
+    }
+  ]
+}

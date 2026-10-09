@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>便携 AI 工作台 · 对话</title>
+<style>
+  :root {
+    --bg: #14161a;
+    --panel: #1c1f26;
+    --panel-2: #23272f;
+    --line: #31363f;
+    --text: #e6e8ec;
+    --muted: #8b93a1;
+    --accent: #4c8dff;
+    --user: #2a3140;
+    --warn: #ffb454;
+    --err: #ff9d9d;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 15px/1.65 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  .brand { font-weight: 600; white-space: nowrap; }
+  a.back {
+    color: var(--accent); text-decoration: none; font-size: 13px; white-space: nowrap;
+    border: 1px solid var(--line); border-radius: 8px; padding: 6px 11px; background: var(--panel-2);
+  }
+  a.back:hover { background: #2b303a; border-color: #4a5262; text-decoration: none; }
+  .meta { color: var(--muted); font-size: 12.5px; margin-right: auto; }
+  .meta b { color: #a9b4c6; font-weight: 500; }
+  .meta b.warn { color: var(--warn); }
+
+  select {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 7px 10px; font: inherit; font-size: 13.5px;
+    max-width: 340px; cursor: pointer;
+  }
+  select:focus { outline: none; border-color: #48566e; }
+  select:disabled { opacity: .5; cursor: not-allowed; }
+
+  button {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 7px 14px; font-size: 14px; cursor: pointer;
+    font-family: inherit;
+  }
+  button:hover:not(:disabled) { border-color: #4a5262; background: #2b303a; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover:not(:disabled) { background: #3f7ff0; }
+  button.danger { color: var(--err); border-color: #53393c; }
+
+  .banner {
+    padding: 10px 16px; font-size: 13.5px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .banner.hidden { display: none; }
+  .banner.loading { background: #262b1f; color: #cfe3ac; }
+  .banner.error { background: #33262a; color: var(--err); }
+  .banner .close { margin-left: auto; padding: 3px 10px; font-size: 12.5px; }
+  .spin {
+    width: 13px; height: 13px; border: 2px solid #6b7f4a; border-top-color: #cfe3ac;
+    border-radius: 50%; animation: spin .8s linear infinite; flex: 0 0 auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .settings {
+    display: flex; gap: 18px; flex-wrap: wrap; align-items: center;
+    padding: 10px 16px; background: var(--panel-2); border-bottom: 1px solid var(--line);
+    font-size: 13.5px;
+  }
+  .settings.hidden { display: none; }
+  .settings label { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+  .settings input[type=text] {
+    background: var(--bg); color: var(--text); border: 1px solid var(--line);
+    border-radius: 7px; padding: 6px 10px; width: min(58vw, 560px); font-family: inherit; font-size: 13.5px;
+  }
+  .settings input[type=range] { width: 170px; accent-color: var(--accent); }
+  .val { color: var(--text); min-width: 30px; display: inline-block; }
+
+  main { flex: 1; overflow-y: auto; padding: 18px 0 8px; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 16px; }
+  .msg { display: flex; gap: 12px; margin-bottom: 18px; }
+  .avatar {
+    flex: 0 0 30px; height: 30px; border-radius: 8px; display: grid; place-items: center;
+    font-size: 12.5px; font-weight: 600; margin-top: 2px;
+  }
+  .who-user .avatar { background: var(--user); color: #9fb6d8; }
+  .who-ai .avatar { background: #2f3a2c; color: #a8d39a; }
+  .body { flex: 1; min-width: 0; }
+  .name { color: var(--muted); font-size: 12px; margin-bottom: 3px; }
+  .text { white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere; }
+  code {
+    background: #0f1115; border: 1px solid var(--line); border-radius: 4px;
+    padding: 1px 5px; font-size: 13px;
+    font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
+  }
+  pre {
+    background: #0f1115; border: 1px solid var(--line); border-radius: 8px;
+    padding: 11px 13px; overflow-x: auto; margin: 8px 0;
+  }
+  pre code { background: none; border: none; padding: 0; font-size: 13px; line-height: 1.5; }
+  .cursor::after {
+    content: "▋"; color: var(--accent); animation: blink 1s steps(1) infinite; margin-left: 1px;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  .notice { color: var(--muted); font-size: 12.5px; font-style: italic; margin: 4px 0; text-align: center; }
+  .stats { color: var(--muted); font-size: 12px; margin-top: 6px; }
+  .stats.err { color: var(--err); font-style: normal; }
+  .empty { color: var(--muted); text-align: center; margin-top: 12vh; font-size: 14px; line-height: 2; }
+  .empty kbd {
+    background: var(--panel-2); border: 1px solid var(--line); border-bottom-width: 2px;
+    border-radius: 5px; padding: 1px 7px; font-size: 12.5px; font-family: inherit;
+  }
+
+  .msgimg {
+    display: block; max-width: min(100%, 420px); max-height: 320px;
+    border-radius: 10px; border: 1px solid var(--line); margin: 0 0 8px;
+    cursor: zoom-in; background: #0b0d10;
+  }
+  .attachbar {
+    max-width: 860px; margin: 0 auto 10px; display: flex; gap: 12px;
+    align-items: center; flex-wrap: wrap;
+  }
+  .attachbar.hidden { display: none; }
+  .thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
+  .thumb { position: relative; }
+  .thumb img {
+    width: 62px; height: 62px; object-fit: cover; border-radius: 8px;
+    border: 1px solid var(--line); display: block;
+  }
+  .thumb button {
+    position: absolute; top: -6px; right: -6px; width: 20px; height: 20px;
+    padding: 0; border-radius: 50%; font-size: 13px; line-height: 1;
+    background: #3a2326; border-color: #6b3b40; color: var(--err);
+  }
+  .attachbar .hint { color: var(--muted); font-size: 12.5px; }
+
+  footer {
+    border-top: 1px solid var(--line); background: var(--panel);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+  .composer { max-width: 860px; margin: 0 auto; display: flex; gap: 10px; align-items: flex-end; }
+  #attachBtn { flex: 0 0 auto; height: 46px; }
+  body.dragover { outline: 2px dashed var(--accent); outline-offset: -8px; }
+  textarea {
+    flex: 1; resize: none; background: var(--bg); color: var(--text);
+    border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px;
+    font: inherit; line-height: 1.55; max-height: 190px; min-height: 46px;
+  }
+  textarea:focus { outline: none; border-color: #48566e; }
+  .sendcol { display: flex; flex-direction: column; gap: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="/" title="回到四个入口那一页">← 回首页</a>
+  <div class="brand">便携 AI 工作台 · 对话</div>
+  <select id="modelSel" title="切换模型"><option>载入中…</option></select>
+  <div class="meta" id="meta"></div>
+  <button id="settingsBtn">设置</button>
+  <button id="clearBtn" class="danger">清空</button>
+</header>
+
+<div class="banner hidden" id="banner">
+  <span id="bannerIcon"></span>
+  <span id="bannerText"></span>
+  <button class="close hidden" id="bannerClose">知道了</button>
+</div>
+
+<div class="settings hidden" id="settings">
+  <label>系统提示词
+    <input type="text" id="system" spellcheck="false">
+  </label>
+  <label>温度
+    <input type="range" id="temp" min="0" max="1.5" step="0.05">
+    <span class="val" id="tempVal"></span>
+  </label>
+  <label>最长回复
+    <input type="range" id="maxTok" min="128" max="3072" step="128">
+    <span class="val" id="maxTokVal"></span>
+  </label>
+  <label title="打开后模型会先自言自语想一大堆再回答，写小说建议关着">
+    <input type="checkbox" id="thinkOn" style="accent-color: var(--accent)">
+    思考模式（默认关）
+  </label>
+</div>
+
+<main id="main"><div class="wrap" id="messages"></div></main>
+
+<footer>
+  <div class="attachbar hidden" id="attachbar">
+    <div class="thumbs" id="thumbs"></div>
+    <span class="hint" id="attachHint"></span>
+  </div>
+  <div class="composer">
+    <button id="attachBtn" title="添加图片（也可以直接 Ctrl+V 粘贴或拖进来）">图片</button>
+    <textarea id="input" rows="1" placeholder="输入消息…"></textarea>
+    <div class="sendcol">
+      <button id="sendBtn" class="primary">发送</button>
+      <button id="stopBtn" class="hidden danger">停止</button>
+    </div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const mainEl = $('main'), msgsEl = $('messages'), inputEl = $('input');
+  const metaEl = $('meta'), systemEl = $('system'), tempEl = $('temp'), tempValEl = $('tempVal');
+  const maxTokEl = $('maxTok'), maxTokValEl = $('maxTokVal');
+  const selEl = $('modelSel'), bannerEl = $('banner');
+  const bannerIconEl = $('bannerIcon'), bannerTextEl = $('bannerText'), bannerCloseEl = $('bannerClose');
+
+  let history = [];        // [{role, content}] 已完成的多轮对话
+  let streaming = false;   // 正在生成
+  let switching = false;   // 正在切换模型
+  let controller = null;
+  let loadedModels = [];
+  let currentPath = null;
+  let defaultPath = null;
+  let pollTimer = null;
+  let pendingImages = [];  // [{url, w, h}] 待发送的图片
+  let visionReady = false; // 当前模型能否看图
+
+  // ------------------------------------------------ 轻量 Markdown
+  const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  function md(src) {
+    return src.split('```').map((part, i) => {
+      if (i % 2 === 1) {
+        const nl = part.indexOf('\n');
+        const body = (nl >= 0 ? part.slice(nl + 1) : part).replace(/\n$/, '');
+        return '<pre><code>' + esc(body) + '</code></pre>';
+      }
+      let h = esc(part);
+      h = h.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+      h = h.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+      return h.replace(/\n/g, '<br>');
+    }).join('');
+  }
+
+  // ------------------------------------------------ 渲染
+  const atBottom = () => mainEl.scrollHeight - mainEl.scrollTop - mainEl.clientHeight < 90;
+  const scrollDown = () => { mainEl.scrollTop = mainEl.scrollHeight; };
+
+  function showEmpty() {
+    msgsEl.innerHTML =
+      '<div class="empty">这是一个完全跑在你自己电脑上的模型，对话不会离开本机。<br>' +
+      '模型切换在「模型管家」页；换完这边刷新一下即可。<br>' +
+      '<kbd>Enter</kbd> 发送　<kbd>Shift</kbd>+<kbd>Enter</kbd> 换行</div>';
+  }
+
+  function addMsg(who, text, images) {
+    const empty = msgsEl.querySelector('.empty');
+    if (empty) empty.remove();
+    const stick = atBottom();
+    const row = document.createElement('div');
+    row.className = 'msg who-' + who;
+    row.innerHTML =
+      '<div class="avatar">' + (who === 'user' ? '你' : 'AI') + '</div>' +
+      '<div class="body">' +
+        '<div class="name">' + (who === 'user' ? '你' : (currentName() || 'AI')) + '</div>' +
+        '<div class="imgs"></div>' +
+        '<div class="text"></div>' +
+        '<div class="stats hidden"></div>' +
+      '</div>';
+    row.querySelector('.text').innerHTML = md(text || '');
+    if (images && images.length) {
+      const box = row.querySelector('.imgs');
+      images.forEach((im) => {
+        const el = document.createElement('img');
+        el.className = 'msgimg';
+        el.src = im.url;
+        el.title = '点击在新标签页打开原图';
+        el.addEventListener('click', () => window.open(im.url, '_blank'));
+        box.appendChild(el);
+      });
+    }
+    msgsEl.appendChild(row);
+    if (stick) scrollDown();
+    return row;
+  }
+  function currentName() {
+    const m = loadedModels.find((x) => x.path === currentPath);
+    return m ? m.name : '';
+  }
+  function setText(row, text) {
+    const stick = atBottom();
+    row.querySelector('.text').innerHTML = md(text);
+    if (stick) scrollDown();
+  }
+  function setStats(row, text, isErr) {
+    const el = row.querySelector('.stats');
+    el.textContent = text;
+    el.classList.remove('hidden');
+    el.classList.toggle('err', !!isErr);
+  }
+  function addNotice(text) {
+    const stick = atBottom();
+    const d = document.createElement('div');
+    d.className = 'notice';
+    d.textContent = text;
+    msgsEl.appendChild(d);
+    if (stick) scrollDown();
+  }
+
+  function showBanner(kind, text, closable) {
+    bannerEl.className = 'banner ' + kind;
+    bannerIconEl.innerHTML = kind === 'loading' ? '<span class="spin"></span>' : '';
+    bannerTextEl.textContent = text;
+    bannerCloseEl.classList.toggle('hidden', !closable);
+  }
+  function hideBanner() { bannerEl.className = 'banner hidden'; }
+
+  // ------------------------------------------------ 状态
+  function setBusy(on) {
+    streaming = on;
+    $('sendBtn').disabled = on || switching;
+    $('sendBtn').classList.toggle('hidden', on);
+    $('stopBtn').classList.toggle('hidden', !on);
+    inputEl.disabled = on || switching;
+    updateAttachState();
+  }
+  function setSwitching(on) {
+    switching = on;
+    selEl.disabled = on;
+    inputEl.disabled = on || streaming;
+    $('sendBtn').disabled = on || streaming;
+    updateAttachState();
+  }
+
+  // ------------------------------------------------ 模型列表
+  function renderMeta(d) {
+    if (!d.current) {
+      metaEl.innerHTML = '<b class="warn">当前没有已加载的模型</b>';
+      return;
+    }
+    visionReady = !!d.current.vision;
+    const visTag = visionReady ? '　视觉 <b>已启用</b>' : '';
+    metaEl.innerHTML =
+      '上下文 <b>' + d.current.n_ctx + '</b>　线程 <b>' + d.n_threads +
+      '</b>　加速 <b>' + d.current.config + '</b>' + visTag;
+    updateAttachState();
+  }
+
+  function updateAttachState() {
+    const btn = $('attachBtn');
+    const hasVisionModel = loadedModels.some((m) => m.vision);
+    btn.disabled = switching || streaming || !visionReady;
+    if (visionReady) {
+      btn.title = '添加图片（也可以直接 Ctrl+V 粘贴或拖进来）';
+    } else if (hasVisionModel) {
+      btn.title = '当前模型不能看图，请切换到带「可看图」标记的模型';
+    } else {
+      btn.title = '没有可看图的模型：需要主模型 + 同名的 mmproj 视觉投影器';
+    }
+  }
+
+  function renderModelList(d) {
+    const prevValue = selEl.value;
+    selEl.innerHTML = '';
+    loadedModels = d.models || [];
+    defaultPath = d.default_path;
+    currentPath = d.current ? d.current.path : null;
+
+    if (!loadedModels.length) {
+      selEl.innerHTML = '<option>没找到模型文件</option>';
+      selEl.disabled = true;
+      return;
+    }
+    loadedModels.forEach((m) => {
+      const opt = document.createElement('option');
+      opt.value = m.path;
+      const star = m.path === d.default_path ? '★ ' : '';
+      const note = m.note ? '  ·  ' + m.note : '';
+      opt.textContent = star + m.name + '  ·  ' + m.size_gb + 'GB' + note;
+      selEl.appendChild(opt);
+    });
+    const want = (d.loading ? d.loading_path : null) || currentPath || prevValue;
+    if (want && loadedModels.some((m) => m.path === want)) selEl.value = want;
+  }
+
+  async function refreshModels() {
+    const res = await fetch('/api/models');
+    const d = await res.json();
+    renderModelList(d);
+    renderMeta(d);
+
+    if (d.loading) {
+      setSwitching(true);
+      selEl.value = d.loading_path || selEl.value;
+      showBanner('loading', '正在加载 ' + (d.loading_name || '模型') + ' …首次加载约需 60~90 秒，请勿关闭窗口', false);
+      return d;
+    }
+
+    const wasSwitching = switching;
+    setSwitching(false);
+    if (d.error) {
+      showBanner('error', d.error, true);
+    } else if (wasSwitching) {
+      hideBanner();
+      addNotice('已切换到 ' + (d.current ? d.current.name : '?') +
+                (d.current ? '（上下文 ' + d.current.n_ctx + '）' : ''));
+    } else {
+      hideBanner();
+    }
+    return d;
+  }
+
+  function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(async () => {
+      try {
+        const d = await refreshModels();
+        if (!d.loading) { clearInterval(pollTimer); pollTimer = null; }
+      } catch (_) { /* 服务重启中，继续轮询 */ }
+    }, 2000);
+  }
+
+  selEl.addEventListener('change', async () => {
+    const target = selEl.value;
+    if (!target || target === currentPath || switching) {
+      selEl.value = currentPath || target;
+      return;
+    }
+    const m = loadedModels.find((x) => x.path === target);
+    const label = m ? m.name : target;
+    if (!confirm('切换到「' + label + '」？\n\n加载需要 60~90 秒，期间无法对话。\n切换后当前对话历史会保留。')) {
+      selEl.value = currentPath || target;
+      return;
+    }
+    setSwitching(true);
+    showBanner('loading', '正在加载 ' + label + ' …请稍候', false);
+    try {
+      const res = await fetch('/api/model/switch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file: target }),
+      });
+      if (!res.ok) {
+        let detail = res.status + ' ' + res.statusText;
+        try { detail = (await res.json()).detail || detail; } catch (_) {}
+        throw new Error(detail);
+      }
+      startPolling();
+    } catch (err) {
+      setSwitching(false);
+      selEl.value = currentPath || selEl.value;
+      showBanner('error', '切换失败：' + err.message, true);
+    }
+  });
+
+  // ------------------------------------------------ 图片处理
+  const MAX_EDGE = 1280;      // 长边上限，避免请求体过大
+  const JPEG_Q = 0.85;
+
+  function renderThumbs() {
+    const bar = $('attachbar'), box = $('thumbs'), hint = $('attachHint');
+    box.innerHTML = '';
+    if (!pendingImages.length) {
+      bar.classList.add('hidden');
+      hint.textContent = '';
+      return;
+    }
+    bar.classList.remove('hidden');
+    pendingImages.forEach((im, i) => {
+      const d = document.createElement('div');
+      d.className = 'thumb';
+      const img = document.createElement('img');
+      img.src = im.url;
+      img.title = im.w + '×' + im.h + '　' + Math.round(im.url.length / 1024) + ' KB';
+      img.addEventListener('click', () => window.open(im.url, '_blank'));
+      const del = document.createElement('button');
+      del.textContent = '×';
+      del.title = '移除这张图';
+      del.addEventListener('click', () => {
+        pendingImages.splice(i, 1);
+        renderThumbs();
+      });
+      d.appendChild(img);
+      d.appendChild(del);
+      box.appendChild(d);
+    });
+    const kb = Math.round(pendingImages.reduce((s, x) => s + x.url.length, 0) / 1024);
+    hint.textContent = pendingImages.length + ' 张图 · 约 ' + kb + ' KB · 每张约消耗 1024 个上下文 token';
+  }
+
+  function loadImage(file) {
+    return new Promise((resolve, reject) => {
+      if (!file.type.startsWith('image/')) {
+        reject(new Error('不是图片文件'));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('读取失败'));
+      reader.onload = () => {
+        const raw = new Image();
+        raw.onerror = () => reject(new Error('无法解码'));
+        raw.onload = () => {
+          let { width: w, height: h } = raw;
+          const scale = Math.min(1, MAX_EDGE / Math.max(w, h));
+          w = Math.max(1, Math.round(w * scale));
+          h = Math.max(1, Math.round(h * scale));
+          const cv = document.createElement('canvas');
+          cv.width = w;
+          cv.height = h;
+          const ctx = cv.getContext('2d');
+          ctx.fillStyle = '#ffffff';           // 透明 PNG 转 JPEG 会变黑底，先铺白
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(raw, 0, 0, w, h);
+          resolve({ url: cv.toDataURL('image/jpeg', JPEG_Q), w, h });
+        };
+        raw.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function addFiles(files) {
+    if (!visionReady) {
+      addNotice('当前模型不能看图，请先在左上角切到带「可看图」标记的模型');
+      return;
+    }
+    const list = Array.from(files || []).slice(0, 4 - pendingImages.length);
+    for (const f of list) {
+      try {
+        pendingImages.push(await loadImage(f));
+      } catch (e) {
+        addNotice('这张图读不了：' + e.message);
+      }
+    }
+    renderThumbs();
+  }
+
+  // ------------------------------------------------ SSE 发送
+  async function send() {
+    const text = inputEl.value.trim();
+    if ((!text && !pendingImages.length) || streaming || switching) return;
+
+    const imgs = pendingImages.slice();
+    addMsg('user', text, imgs);
+    history.push({
+      role: 'user',
+      content: imgs.length
+        ? [{ type: 'text', text }, ...imgs.map((im) => ({ type: 'image_url', image_url: { url: im.url } }))]
+        : text,
+    });
+    inputEl.value = '';
+    pendingImages = [];
+    renderThumbs();
+    autoGrow();
+
+    const row = addMsg('ai', '');
+    row.querySelector('.text').classList.add('cursor');
+    setBusy(true);
+    controller = new AbortController();
+
+    let answer = '';
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          messages: history,
+          system: systemEl.value,
+          temperature: parseFloat(tempEl.value),
+          max_tokens: parseInt(maxTokEl.value, 10),
+          thinking: $('thinkOn').checked,
+        }),
+      });
+      if (!res.ok) {
+        let detail = res.status + ' ' + res.statusText;
+        try { detail = (await res.json()).detail || detail; } catch (_) {}
+        throw new Error(detail);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let cut;
+        while ((cut = buf.indexOf('\n\n')) >= 0) {
+          const block = buf.slice(0, cut);
+          buf = buf.slice(cut + 2);
+          if (!block.startsWith('data: ')) continue;
+          let ev;
+          try { ev = JSON.parse(block.slice(6)); } catch (_) { continue; }
+          if (ev.type === 'delta') {
+            answer += ev.text;
+            setText(row, answer);
+          } else if (ev.type === 'info') {
+            addNotice(ev.text);
+          } else if (ev.type === 'done') {
+            setStats(row, ev.tokens + ' tokens　' + ev.seconds + 's　' + ev.tps + ' tok/s');
+            if (ev.note) addNotice(ev.note);
+          } else if (ev.type === 'error') {
+            answer += '\n[错误] ' + ev.text;
+            setText(row, answer);
+            setStats(row, '生成失败：' + ev.text, true);
+          }
+        }
+      }
+      if (answer.trim()) history.push({ role: 'assistant', content: answer });
+      else if (!answer) setStats(row, '模型没有返回内容', true);
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        if (answer.trim()) history.push({ role: 'assistant', content: answer });
+        setStats(row, '已停止（' + answer.length + ' 字）');
+      } else {
+        setText(row, (answer || '') + '\n[连接失败] ' + err.message);
+        setStats(row, '连接失败：' + err.message, true);
+      }
+    } finally {
+      row.querySelector('.text').classList.remove('cursor');
+      controller = null;
+      setBusy(false);
+      inputEl.focus();
+      scrollDown();
+    }
+  }
+
+  // ------------------------------------------------ 事件绑定
+  function autoGrow() {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 190) + 'px';
+  }
+
+  inputEl.addEventListener('input', autoGrow);
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      send();
+    }
+  });
+  $('sendBtn').addEventListener('click', send);
+  $('stopBtn').addEventListener('click', () => controller && controller.abort());
+  $('settingsBtn').addEventListener('click', () => $('settings').classList.toggle('hidden'));
+  bannerCloseEl.addEventListener('click', hideBanner);
+  $('clearBtn').addEventListener('click', () => {
+    if (streaming || switching) return;
+    history = [];
+    pendingImages = [];
+    renderThumbs();
+    showEmpty();
+  });
+
+  // 图片：按钮选择 / 粘贴 / 拖入
+  const fileEl = document.createElement('input');
+  fileEl.type = 'file';
+  fileEl.accept = 'image/*';
+  fileEl.multiple = true;
+  fileEl.style.display = 'none';
+  document.body.appendChild(fileEl);
+  fileEl.addEventListener('change', () => {
+    addFiles(fileEl.files);
+    fileEl.value = '';
+  });
+  $('attachBtn').addEventListener('click', () => fileEl.click());
+
+  inputEl.addEventListener('paste', (e) => {
+    const items = (e.clipboardData || {}).items || [];
+    const files = [];
+    for (const it of items) {
+      if (it.kind === 'file') {
+        const f = it.getAsFile();
+        if (f) files.push(f);
+      }
+    }
+    if (files.length) {
+      e.preventDefault();
+      addFiles(files);
+    }
+  });
+
+  let dragDepth = 0;
+  document.addEventListener('dragenter', (e) => {
+    if (!e.dataTransfer || Array.from(e.dataTransfer.types || []).indexOf('Files') < 0) return;
+    dragDepth++;
+    document.body.classList.add('dragover');
+  });
+  document.addEventListener('dragover', (e) => {
+    if (e.dataTransfer && Array.from(e.dataTransfer.types || []).indexOf('Files') >= 0) e.preventDefault();
+  });
+  document.addEventListener('dragleave', () => {
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (!dragDepth) document.body.classList.remove('dragover');
+  });
+  document.addEventListener('drop', (e) => {
+    if (!e.dataTransfer || !e.dataTransfer.files || !e.dataTransfer.files.length) return;
+    e.preventDefault();
+    dragDepth = 0;
+    document.body.classList.remove('dragover');
+    addFiles(e.dataTransfer.files);
+  });
+
+  tempEl.addEventListener('input', () => { tempValEl.textContent = parseFloat(tempEl.value).toFixed(2); });
+  maxTokEl.addEventListener('input', () => { maxTokValEl.textContent = maxTokEl.value; });
+
+  // ------------------------------------------------ 初始化
+  showEmpty();
+  autoGrow();
+  tempEl.value = 0.7;
+  tempValEl.textContent = '0.70';
+  maxTokEl.value = 1024;
+  maxTokValEl.textContent = '1024';
+  refreshModels()
+    .then((d) => {
+      systemEl.value = d.default_system || '';      // 默认不带系统提示词，留空
+      tempEl.value = d.default_temperature != null ? d.default_temperature : 0.7;
+      tempValEl.textContent = parseFloat(tempEl.value).toFixed(2);
+      if (d.loading) startPolling();
+    })
+    .catch(() => {
+      metaEl.innerHTML = '<b class="warn">无法连接后端服务</b>';
+      selEl.innerHTML = '<option>连接失败</option>';
+    });
+})();
+</script>
+</body>
+</html>

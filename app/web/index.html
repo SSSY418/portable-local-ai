@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>便携 AI 工作台</title>
+<style>
+  :root {
+    --bg: #14161a;
+    --panel: #1c1f26;
+    --panel-2: #23272f;
+    --line: #31363f;
+    --text: #e6e8ec;
+    --muted: #8b93a1;
+    --accent: #4c8dff;
+    --warn: #ffb454;
+    --err: #ff9d9d;
+    --ok: #7fd18a;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 15px/1.65 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 14px 20px; background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  .brand { font-weight: 600; font-size: 16px; }
+  .sub { color: var(--muted); font-size: 12.5px; margin-right: auto; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 999px; padding: 5px 12px; font-size: 12.5px; color: var(--muted);
+  }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: 0 0 auto; }
+  .dot.ok { background: var(--ok); box-shadow: 0 0 8px rgba(127,209,138,.6); }
+  .dot.bad { background: var(--err); }
+  .dot.wait { background: var(--warn); animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+
+  main { flex: 1; display: grid; place-items: center; padding: 28px 20px; }
+  .grid {
+    width: 100%; max-width: 880px;
+    display: grid; gap: 18px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  a.card {
+    display: block; text-decoration: none; color: inherit;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 26px 22px; position: relative; overflow: hidden;
+    transition: transform .12s ease, border-color .12s ease, background .12s ease;
+  }
+  a.card:hover { transform: translateY(-3px); background: #1f232b; border-color: #48566e; }
+  a.card:active { transform: translateY(0); }
+  .bar { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+  .c1 .bar { background: var(--accent); }
+  .c2 .bar { background: #a78bfa; }
+  .c3 .bar { background: #f0a26b; }
+  .c4 .bar { background: var(--ok); }
+  .icon { font-size: 30px; line-height: 1; margin-bottom: 12px; }
+  .name { font-size: 19px; font-weight: 600; margin-bottom: 6px; }
+  .desc { color: var(--muted); font-size: 13px; min-height: 40px; }
+  .key {
+    position: absolute; right: 16px; top: 14px; color: #5b6472;
+    font-size: 11.5px; border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px;
+  }
+  footer {
+    border-top: 1px solid var(--line); background: var(--panel);
+    padding: 12px 20px; color: var(--muted); font-size: 12.5px;
+    display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
+  }
+  footer b { color: #a9b4c6; font-weight: 500; }
+  .clue { margin-left: auto; }
+
+  /* ---- 说人话执行区 ---- */
+  .ask { padding: 0 20px 22px; }
+  .askbox { max-width: 880px; margin: 0 auto; }
+  .askrow { display: flex; gap: 10px; }
+  .askrow input {
+    flex: 1; background: var(--bg); color: var(--text); border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px 14px; font: inherit; font-size: 14.5px; min-width: 0;
+  }
+  .askrow input:focus { outline: none; border-color: #48566e; }
+  .askhint { color: var(--muted); font-size: 12.5px; margin-top: 7px; line-height: 1.7; }
+  .askhint b { color: #a9b4c6; font-weight: 500; }
+  .plan {
+    margin-top: 11px; background: var(--panel); border: 1px solid var(--line);
+    border-left: 4px solid var(--accent); border-radius: 10px; padding: 13px 16px;
+  }
+  .plan.hidden { display: none; }
+  .plan.ok { border-left-color: var(--ok); }
+  .plan.err { border-left-color: var(--err); }
+  .planhead { font-size: 14px; margin-bottom: 6px; }
+  .planbody { color: var(--muted); font-size: 13.5px; line-height: 1.8; word-break: break-word; }
+  .planbody code {
+    background: #0f1115; border: 1px solid var(--line); border-radius: 4px;
+    padding: 1px 6px; font-family: "Cascadia Mono", Consolas, monospace; font-size: 13px;
+    color: var(--text);
+  }
+  .planrow { display: flex; gap: 10px; justify-content: flex-end; margin-top: 12px; }
+  .planrow.hidden { display: none; }
+  .spin {
+    display: inline-block; width: 12px; height: 12px; border: 2px solid #48566e;
+    border-top-color: var(--accent); border-radius: 50%; animation: sp .8s linear infinite;
+  }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  @media (max-width: 660px) {
+    .grid { grid-template-columns: 1fr; }
+    main { place-items: start center; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">便携 AI 工作台</div>
+  <div class="sub">全部在这台电脑上跑，内容不出本机</div>
+  <span class="chip"><span class="dot wait" id="dotKobold"></span><span id="txtKobold">模型服务 检测中…</span></span>
+  <span class="chip"><span class="dot wait" id="dotBench"></span><span id="txtBench">工作台 检测中…</span></span>
+</header>
+
+<main>
+  <div class="grid">
+    <a class="card c1" href="/chat.html">
+      <span class="bar"></span><span class="key">1</span>
+      <div class="icon">💬</div>
+      <div class="name">对话</div>
+      <div class="desc">跟本地模型聊天，边写边出字。</div>
+    </a>
+    <a class="card c2" href="/model.html">
+      <span class="bar"></span><span class="key">2</span>
+      <div class="icon">🧩</div>
+      <div class="name">模型管家</div>
+      <div class="desc">看看有哪些模型，切换正在用的那个。</div>
+    </a>
+    <a class="card c3" href="/novel.html">
+      <span class="bar"></span><span class="key">3</span>
+      <div class="icon">📖</div>
+      <div class="name">写小说</div>
+      <div class="desc">按大纲一个单元一个单元往下写。</div>
+    </a>
+    <a class="card c4" href="/status.html">
+      <span class="bar"></span><span class="key">4</span>
+      <div class="icon">🩺</div>
+      <div class="name">体检</div>
+      <div class="desc">一键检查 CPU、内存、显卡、磁盘。</div>
+    </a>
+  </div>
+</main>
+
+<section class="ask">
+  <div class="askbox">
+    <div class="askrow">
+      <input id="askInput" type="text" autocomplete="off" spellcheck="false"
+             placeholder="也可以直接说话，比如「帮我看看电脑卡不卡」「现在用的是哪个模型」">
+      <button id="askBtn" class="primary">执行</button>
+    </div>
+    <div class="askhint" id="askHint">
+      说人话就行，本地模型会把它翻译成该调哪个功能，<b>执行前会先给你看一眼</b>，你点确认才动手。
+    </div>
+    <div class="plan hidden" id="plan">
+      <div class="planhead" id="planHead"></div>
+      <div class="planbody" id="planBody"></div>
+      <div class="planrow">
+        <button id="planCancel">取消</button>
+        <button id="planOk" class="primary">确认执行</button>
+      </div>
+    </div>
+    <div class="plan hidden" id="planResult">
+      <div class="planhead" id="resHead"></div>
+      <div class="planbody" id="resBody"></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <span>后端地址 <b id="addr">http://127.0.0.1:8000</b></span>
+  <span class="clue">按 <b>1</b>~<b>4</b> 也能直接进对应页面</span>
+</footer>
+
+<script>
+(function () {
+  var KEYS = { '1': '/chat.html', '2': '/model.html', '3': '/novel.html', '4': '/status.html' };
+  document.addEventListener('keydown', function (e) {
+    if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    if (!e.ctrlKey && !e.altKey && KEYS[e.key]) location.href = KEYS[e.key];
+  });
+
+  function setChip(dotId, txtId, state, text) {
+    var dot = document.getElementById(dotId);
+    dot.className = 'dot ' + state;
+    document.getElementById(txtId).textContent = text;
+  }
+
+  function refresh() {
+    fetch('/api/health', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        setChip('dotBench', 'txtBench', 'ok', '工作台 正常');
+        if (d.port) document.getElementById('addr').textContent = 'http://127.0.0.1:' + d.port;
+        if (d.kobold) {
+          var v = (d.info && d.info.version) ? ' v' + d.info.version : '';
+          setChip('dotKobold', 'txtKobold', 'ok', '模型服务 正常' + v);
+        } else {
+          setChip('dotKobold', 'txtKobold', 'bad', '模型服务 未启动');
+        }
+      })
+      .catch(function () {
+        setChip('dotBench', 'txtBench', 'bad', '工作台 连接失败');
+        setChip('dotKobold', 'txtKobold', 'bad', '模型服务 未知');
+      });
+  }
+
+  refresh();
+  setInterval(refresh, 5000);
+
+  // ------------------------------------------------ 说人话执行
+  var askInput = document.getElementById('askInput');
+  var askBtn = document.getElementById('askBtn');
+  var planEl = document.getElementById('plan');
+  var planHead = document.getElementById('planHead');
+  var planBody = document.getElementById('planBody');
+  var planRow = document.querySelector('#plan .planrow');
+  var resEl = document.getElementById('planResult');
+  var resHead = document.getElementById('resHead');
+  var resBody = document.getElementById('resBody');
+  var pending = null;      // 等用户确认的计划
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  function hide() {
+    planEl.className = 'plan hidden';
+    resEl.className = 'plan hidden';
+  }
+  function setBusy(on) {
+    askBtn.disabled = on;
+    askBtn.innerHTML = on ? '<span class="spin"></span>' : '执行';
+  }
+
+  function describe(p) {
+    if (!p.skill) return '模型觉得这句话跟现有功能没关系。';
+    var a = (p.args && p.args.length) ? ' ' + p.args.map(function (x) { return '<code>' + esc(x) + '</code>'; }).join(' ') : '';
+    return '要执行 <code>' + esc(p.skill) + '</code> 的 <code>' + esc(p.action) + '</code>' + a;
+  }
+
+  function ask() {
+    var text = askInput.value.trim();
+    if (!text) { askInput.focus(); return; }
+    hide();
+    setBusy(true);
+    fetch('/api/router', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        setBusy(false);
+        if (!d.ok) {
+          planEl.className = 'plan err';
+          planHead.innerHTML = '没听懂 / 翻译失败';
+          planBody.innerHTML = esc(d.error || '未知错误') + '<br><span style="color:#5f6874">' + esc(text) + '</span>';
+          planRow.classList.add('hidden');
+          pending = null;
+          return;
+        }
+        if (!d.skill) {
+          planEl.className = 'plan';
+          planHead.innerHTML = '这句话没对上现有功能';
+          planBody.innerHTML = esc(d.reason || '') + '<br><span style="color:#5f6874">可以试试：「体检一下」「现在用的哪个模型」</span>';
+          planRow.classList.add('hidden');
+          pending = null;
+          return;
+        }
+        pending = d;
+        planEl.className = 'plan';
+        planHead.innerHTML = '我理解成：' + esc(d.intent || describe(d));
+        planBody.innerHTML = describe(d)
+          + (d.reason ? '<br><span style="color:#5f6874">理由：' + esc(d.reason) + '</span>' : '')
+          + (d.readonly === false ? '<br><span style="color:#ffb454">⚠ 这一步会真的改动东西（换模型需要 1~2 分钟）</span>' : '');
+        planRow.classList.remove('hidden');
+      })
+      .catch(function (e) {
+        setBusy(false);
+        planEl.className = 'plan err';
+        planHead.innerHTML = '连不上工作台';
+        planBody.innerHTML = esc(e.message);
+        planRow.classList.add('hidden');
+      });
+  }
+
+  function run() {
+    if (!pending) return;
+    var p = pending;
+    setBusy(true);
+    planRow.classList.add('hidden');
+    planHead.innerHTML = '正在执行…';
+    fetch('/api/skill/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ skill: p.skill, action: p.action, args: p.args || [] })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        setBusy(false);
+        pending = null;
+        hide();
+        resEl.className = 'plan ' + (d.ok ? 'ok' : 'err');
+        resHead.innerHTML = d.ok ? '执行完成' : '执行失败';
+        var body = '<b style="color:#e6e8ec">' + esc(d.summary || '') + '</b>';
+        var res = d.result;
+        if (res) {
+          if (res.conclusion && res.conclusion !== d.summary) body += '<br>' + esc(res.conclusion);
+          if (res.loaded) body += '<br>当前模型：<code>' + esc(res.loaded) + '</code>';
+          if (res.models) {
+            body += '<br>共 ' + res.models.length + ' 个模型：';
+            res.models.forEach(function (m) {
+              body += '<br>　<code>' + esc(m.name) + '</code> ' + m.size_gb + 'GB'
+                    + (m.current ? ' <span style="color:#7fd18a">← 正在用</span>' : '');
+            });
+          }
+        }
+        if (d.error) body += '<br>' + esc(d.error);
+        if (!d.ok && d.stderr) body += '<br><span style="color:#5f6874">' + esc(d.stderr) + '</span>';
+        body += '<br><br><span style="color:#5f6874">要看完整报告，去「体检」页。</span>';
+        resBody.innerHTML = body;
+      })
+      .catch(function (e) {
+        setBusy(false);
+        resEl.className = 'plan err';
+        resHead.innerHTML = '执行失败';
+        resBody.innerHTML = esc(e.message);
+      });
+  }
+
+  askBtn.addEventListener('click', ask);
+  askInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); ask(); }
+  });
+  document.getElementById('planOk').addEventListener('click', run);
+  document.getElementById('planCancel').addEventListener('click', function () {
+    hide(); pending = null;
+  });
+})();
+</script>
+</body>
+</html>
