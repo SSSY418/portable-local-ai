@@ -1,16 +1,15 @@
 # 统一换行：bat 在 Windows 上执行，必须保持 CRLF，否则可能出现诡异问题
 *.bat text eol=crlf
-
 # 这些是二进制，别让 git 去猜、也别做换行转换
 *.exe binary
 *.dll binary
 *.pyd binary
 *.gguf binary
 *.zip binary
-
 # 文本文件统一按 UTF-8 处理
 *.py   text diff=python
 *.ps1  text
 *.html text
 *.md   text
 *.json text
+bin/*.exe filter=lfs diff=lfs merge=lfs -text
