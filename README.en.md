@@ -13,11 +13,20 @@ registry, and unplugging the drive leaves no trace.
 
 ## 1. How to use it
 
+> **⚠️ If you cloned this from GitHub, do one extra step first: download the environment.**
+> The portable Python is already in the repository, but koboldcpp (719 MB) and the
+> model are not:
+> ```
+> powershell -ExecutionPolicy Bypass -File _tools\install.ps1
+> ```
+> That takes about a minute. Then follow the steps below. Files that already exist
+> are skipped, so running it again is harmless.
+
 1. Plug the drive into a Windows machine (a USB 3.0 port is faster).
 2. Open the `portable-ai` folder and **double-click `启动.bat`** (the launcher).
 3. A console window opens, starts the model server, and then opens your browser.
-   - **The first start is slow** (it unpacks the program and reads a multi-GB model),
-     so give it time and do not close the window.
+   - **The first start is slow** (it unpacks the program and reads the model into
+     memory), so give it time and do not close the window.
    - That window is the on/off switch: **close it when you are done** and the model
      server shuts down with it.
 4. The browser shows four entries:
@@ -124,7 +133,7 @@ The startup messages are designed around this:
 
 ```
 portable-ai\
-  bin\            koboldcpp.exe (CUDA build), koboldcpp_nocuda.exe (Vulkan/CPU) · INCLUDED (LFS)
+  bin\            koboldcpp.exe (CUDA build), koboldcpp_nocuda.exe (Vulkan/CPU) · NOT included, download on first use
   models\         gguf models · NOT included, supply your own
   py\             portable Python 3.12 (standard library only) · INCLUDED
   app\
@@ -141,23 +150,27 @@ portable-ai\
   README.md       this file
 ```
 
-> **`py\` and `bin\` ship with the repository** - a clone already contains the portable
-> Python and the model server, so there is nothing else to download. Only `models\`
-> (the model files) is left out, and that part is up to you.
+> **`py\` (portable Python, 21 MB) is in the repository** - a clone already has it.
 >
-> The two executables in `bin\` total 719 MB, which is over GitHub's 100 MB per-file
-> limit, so they are stored with **Git LFS**. Install Git LFS once before cloning
-> (`git lfs install`); without it, `bin\` only gives you 134-byte pointer files
-> instead of the real programs.
+> **`bin\` (koboldcpp, 719 MB) and `models\` (the model files) are not, and are
+> downloaded on first use.** The reason: a single file in `bin\` is 607 MB, over
+> GitHub's 100 MB per-file limit. Git LFS can carry it, but it would fill the free
+> LFS quota (1 GB storage / 1 GB transfer per month), so a few clones by other
+> people would exhaust it. Instead the script downloads from the **official**
+> release, which uses public bandwidth and costs nobody any quota.
 >
-> **No model is preset** - pick one of these two routes:
 > ```
-> # 1) let the script download one (give it a URL)
+> # first run, once after cloning (about 1 minute, 719 MB)
+> powershell -ExecutionPolicy Bypass -File _tools\install.ps1
+>
+> # to fetch a model in the same step (supply a URL)
 > powershell -ExecutionPolicy Bypass -File _tools\install.ps1 `
 >     -ModelUrl "https://hf-mirror.com/<repo>/resolve/main/<file>.gguf"
 >
-> # 2) download any .gguf yourself and drop it into models\
+> # or download any .gguf yourself and drop it into models\
 > ```
+>
+> Files that already exist are skipped, so running this again is harmless.
 
 ---
 

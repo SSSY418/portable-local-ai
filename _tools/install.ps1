@@ -1,22 +1,33 @@
 ﻿<#
-  便携 AI 工作台 —— 一键下载缺失的大文件
+  便携 AI 工作台 —— 一键下载缺失的大文件（首次使用跑一次）
 
-  这个仓库只备份了"自己写的代码"。bin\ models\ py\ 都是能重新下载的
-  大块头（合计 3 GB 左右），所以没有放进 git，用这个脚本拉回来。
+  【什么时候要跑】
+  从 GitHub clone 下来之后，第一次使用前跑一次即可。之后不用再跑。
+
+  【为什么要跑】
+  仓库里放了便携版 Python（py\，21 MB）和全部代码，
+  但下面两大块没放，需要下载：
+    · bin\    koboldcpp 程序本体，约 719 MB
+              它单个文件就 607 MB，超过 GitHub 的 100 MB 单文件限制；
+              走 Git LFS 虽然能传，但会占满 LFS 免费额度
+              （1 GB 存储 / 每月 1 GB 流量），别人 clone 几次就超了。
+              所以改成从这里下载：走官方地址的公共带宽，不占任何人的额度。
+    · models\ 模型文件（GB 级）。没有预设，由你指定或自己放。
 
   用法（在项目根目录）：
+      # 最基本：补下 koboldcpp（并检查 Python 是否齐全）
       powershell -ExecutionPolicy Bypass -File _tools\install.ps1
+
+      # 网络需要代理时：
       powershell -ExecutionPolicy Bypass -File _tools\install.ps1 -Proxy http://127.0.0.1:10808
 
-      # 模型没有预设，要自己给地址（不指定就跳过模型那一步）：
+      # 顺便把模型也下了（地址自己给，不指定就跳过模型那一步）：
       powershell -ExecutionPolicy Bypass -File _tools\install.ps1 `
           -ModelUrl "https://hf-mirror.com/<仓库>/resolve/main/<文件名>.gguf"
 
-      # 也可以只补 Python / koboldcpp，模型自己手动放进 models\：
-      powershell -ExecutionPolicy Bypass -File _tools\install.ps1
-      # 然后手动下载任意 gguf 放进 models\ 即可
+      # 模型自己手动下好任意 .gguf 丢进 models\ 也完全可以。
 
-  已经存在的文件会跳过，不会重复下载。
+  已经存在的文件会跳过，不会重复下载，所以重复跑没有副作用。
 #>
 param(
   [string]$Proxy = "",

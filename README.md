@@ -9,10 +9,17 @@
 
 ## 一、怎么用
 
+> **⚠️ 如果你是从 GitHub clone 下来的，第一次要多做一步：先把环境下下来。**
+> 便携版 Python 已经在仓库里，但 koboldcpp（719 MB）和模型不在，要下载：
+> ```
+> powershell -ExecutionPolicy Bypass -File _tools\install.ps1
+> ```
+> 约 1 分钟。下完再按下面的步骤用。已经下过的文件会自动跳过，所以重复跑没关系。
+
 1. 把移动盘插到电脑上（USB 3.0 的口更快）。
 2. 打开 `portable-ai` 文件夹，**双击 `启动.bat`**。
 3. 会弹出一个黑窗口，先启动模型服务，再自动打开浏览器。
-   - **第一次启动比较慢**（要解包程序、把 2.3 GB 模型读进内存），请耐心等，别关窗口。
+   - **第一次启动比较慢**（要解包程序、把模型读进内存），请耐心等，别关窗口。
    - 这个窗口就是"电源开关"：**用完了直接关掉它**，模型服务会跟着一起退出。
 4. 浏览器里会出现四个入口：
 
@@ -110,7 +117,7 @@ set PORTABLE_AI_MAXWAIT=600       :: 等模型加载的总上限（秒，默认 
 
 ```
 portable-ai\
-  bin\            koboldcpp.exe（CUDA 版）、koboldcpp_nocuda.exe（Vulkan/CPU 版）· 已包含（LFS）
+  bin\            koboldcpp.exe（CUDA 版）、koboldcpp_nocuda.exe（Vulkan/CPU 版）· 未包含，首次要下载
   models\         gguf 模型 · 未包含，需要自己放
   py\             便携版 Python 3.12（只用了标准库，没装任何第三方包）· 已包含
   app\
@@ -126,21 +133,25 @@ portable-ai\
   README.md       就是本文件
 ```
 
-> **`py\` 和 `bin\` 已经放进仓库了** —— clone 下来就有便携版 Python 和模型服务，
-> 不用再下任何东西。只有 `models\`（模型）没放，需要你自己准备。
+> **`py\`（便携版 Python，21 MB）已经在仓库里**，clone 下来就有。
 >
-> `bin\` 里那两个 exe 共 719 MB，超过了 GitHub 单文件 100 MB 的限制，
-> 所以走的是 **Git LFS**：clone 前要先装一次 Git LFS（`git lfs install`），
-> 否则 `bin\` 里只会拿到 134 字节的指针文件，而不是真正的程序。
+> **`bin\`（koboldcpp，719 MB）和 `models\`（模型）不在仓库里，首次要自己下载。**
+> 原因：`bin\` 里单个文件就 607 MB，超过 GitHub 的 100 MB 限制；走 Git LFS 虽然能传，
+> 但会占满它的免费额度（1 GB 存储 / 每月 1 GB 流量），别人多 clone 几次就超了。
+> 所以改成让脚本从**官方地址**下载（走公共带宽，不占任何人的额度）。
 >
-> **模型没有预设**，两种办法二选一：
 > ```
-> # ① 让脚本帮你下（自己给下载地址）
+> # 第一次使用，clone 之后跑一次（约 1 分钟，下载 719 MB）
+> powershell -ExecutionPolicy Bypass -File _tools\install.ps1
+>
+> # 顺便连模型一起下（自己给地址）
 > powershell -ExecutionPolicy Bypass -File _tools\install.ps1 `
 >     -ModelUrl "https://hf-mirror.com/<仓库>/resolve/main/<文件名>.gguf"
 >
-> # ② 自己下好任意 .gguf，直接丢进 models\ 目录
+> # 模型也可以自己下好任意 .gguf，直接丢进 models\ 目录
 > ```
+>
+> 已经下载过的文件会自动跳过，所以这条命令重复跑也不会重复下载。
 
 ---
 

@@ -17,7 +17,11 @@ Thumbs.db
 desktop.ini
 *.tmp
 
-# --- 只排除模型 ---
-# py\（便携版 Python，21 MB）和 bin\（koboldcpp，719 MB，走 Git LFS）
-# 都在仓库里，clone 下来就能直接跑；只有模型需要你自己准备：
+# --- 不进仓库的两大块，用 _tools\install.ps1 下载 ---
+# bin\   koboldcpp 程序本体（约 719 MB）。它单个文件就超了 GitHub 的
+#        100 MB 限制，走 Git LFS 又会占满免费额度（1 GB 存储 / 1 GB 月流量），
+#        所以不进仓库，改成 clone 后让 install.ps1 从官方地址下载
+#        （走公共带宽，不占任何人的额度）。
+/bin/
+# models\ 模型文件（GB 级，且最大的超过 Git LFS 的 2 GB 单文件上限）
 /models/
