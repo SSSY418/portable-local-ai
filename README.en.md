@@ -59,7 +59,7 @@ It does three things:
 
 > **Why does a clone still need one online install step?**
 > A single koboldcpp file is 607 MB, over GitHub's per-file limit, so it cannot go into
-> the repository. The full reasoning and the alternative download routes are in section 3.
+> the repository. The full reasoning is in section 3.
 
 ### 3. Every use after that (offline, no network)
 
@@ -207,7 +207,8 @@ portable-ai\
   work\           the only place a skill may read and write (switch state, speed cache)
   _tools\         start.ps1 (launcher logic), install.ps1 (fetch large files), put.ps1
   启动.bat        double-click this (the name means "start")
-  README.md       this file
+  README.md       Chinese readme (this file)
+  README.en.md    English readme
 ```
 
 > ### Why does a clone still need one online install step?
@@ -223,28 +224,10 @@ portable-ai\
 > | `models\` model files | **GBs** | ❌ no - supply your own |
 >
 > **Why `bin\` is not in the repository**: a single file in it is 607 MB, over
-> GitHub's hard **100 MB per-file** limit, so plain git cannot push it. Git LFS
-> can carry it, but 719 MB would eat most of the free LFS quota
-> (1 GB storage / 1 GB transfer per month) - **one clone by someone else would
-> just about use up a month of transfer**, which makes the repository impossible
-> to share.
+> GitHub's per-file limit (100 MB), so it cannot go into the repository.
 >
 > So instead: **after cloning, the script downloads it from the official koboldcpp
-> release.** That uses public bandwidth and **costs nobody any quota**, no matter
-> how many people clone.
->
-> The trade-off is that the **first use needs one online command** (about a minute):
->
-> ```
-> # required: fetch koboldcpp (existing files are skipped, so re-running is harmless)
-> powershell -ExecutionPolicy Bypass -File _tools\install.ps1
->
-> # optional: fetch a model in the same step (supply a URL; without it, the model step is skipped)
-> powershell -ExecutionPolicy Bypass -File _tools\install.ps1 `
->     -ModelUrl "https://hf-mirror.com/<repo>/resolve/main/<file>.gguf"
->
-> # or download any .gguf yourself and drop it into models\
-> ```
+> release.** The command is in section 2 above.
 >
 > After that one step nothing needs a network again - starting up, chatting and
 > writing are fully offline.
@@ -385,3 +368,20 @@ so nothing is left behind except VRAM being freed.
 
 Look for that console window - is it still there? If it is, port 8000 may be taken by
 another program. Use another machine, or close whatever is holding port 8000.
+
+---
+
+## 7. License
+
+The code in this project is released under the **MIT License** (see [LICENSE](LICENSE)):
+use it, modify it and redistribute it freely - just keep the copyright notice.
+
+Third-party components keep their own licenses:
+
+- `py\` portable Python - PSF License (`py\LICENSE.txt`)
+- `bin\` koboldcpp - **AGPL-3.0** (downloaded by the script from the official release;
+  not distributed with this repository)
+- models under `models\` - whatever their own repository declares (Qwen3 is Apache-2.0)
+
+The executables and the model files are not distributed with this repository. Download
+them yourself and follow their licenses.

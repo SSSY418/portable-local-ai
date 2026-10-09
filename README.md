@@ -53,7 +53,7 @@ powershell -ExecutionPolicy Bypass -File _tools\install.ps1
 
 > **为什么 clone 完了还要联网装一次？**
 > 因为 koboldcpp 单个文件就有 607 MB，超过 GitHub 的单文件上限，没法放进仓库。
-> 详细原因和别的下载方式见下面第三节。
+> 详细原因见下面第三节。
 
 ### 3. 以后每次使用（离线，不需要网络）
 
@@ -122,7 +122,7 @@ set PORTABLE_AI_MAXWAIT=600       :: 等模型加载的总上限（秒，默认 
 
 **先说最快的一条路：那个黑窗口别关。**
 
-| 情况 | 从按下列能用 |
+| 情况 | 从按下到能用 |
 |---|---|
 | 模型服务还在跑（窗口没关） | **约 1.4 秒** |
 | 冷启动（窗口关过） | **约 126 秒** |
@@ -187,7 +187,8 @@ portable-ai\
   work\           技能唯一允许读写文件的地方（换模型状态、测速缓存也在这）
   _tools\         start.ps1（启动器逻辑）、install.ps1（补下大文件）、put.ps1
   启动.bat        双击这个
-  README.md       就是本文件
+  README.md       中文说明（本文件）
+  README.en.md    英文说明
 ```
 
 > ### 为什么 clone 完了还要联网装一次？
@@ -201,19 +202,10 @@ portable-ai\
 > | `bin\` koboldcpp 程序本体 | **719 MB** | ❌ 不在，要下载 |
 > | `models\` 模型 | **GB 级** | ❌ 不在，要自己准备 |
 >
-> **为什么 `bin\` 不放进仓库**：里面单个文件就有 607 MB，超过 GitHub
+> **为什么 `bin\` 不放进仓库**：里面单个文件就有 607 MB，超过 GitHub 的单文件上限
+> （100 MB），没法放进仓库。
 >
-> 所以改成：**clone 后由脚本从 koboldcpp 官方 Releases 下载**。
-> ```
-> # 必做：补下 koboldcpp（已经有的文件会自动跳过，重复跑没关系）
-> powershell -ExecutionPolicy Bypass -File _tools\install.ps1
->
-> # 可选：顺便把模型也下了
-> powershell -ExecutionPolicy Bypass -File _tools\install.ps1 `
->     -ModelUrl "https://hf-mirror.com/<仓库>/resolve/main/<文件名>.gguf"
->
-> # 模型也可以自己下好任意 .gguf，直接放进 models\ 目录
-> ```
+> 所以改成：**clone 后由脚本从 koboldcpp 官方 Releases 下载**。命令见上面第二节。
 >
 > 跑完这一次就不用再联网了 —— 之后启动、对话、写小说全部离线。
 
@@ -339,3 +331,18 @@ novels\<作品名>\
 
 看那个黑窗口还在不在。窗口在但页面打不开，可能是 8000 端口被别的程序占了，
 换一台电脑或者关掉占用 8000 端口的程序。
+
+---
+
+## 七、开源协议
+
+本项目代码采用 **MIT 协议**（见 [LICENSE](LICENSE)），可以自由使用、修改、再发布，
+保留版权声明即可。
+
+仓库里和脚本下载的第三方组件各自遵循自己的协议：
+
+- `py\` 便携版 Python —— PSF 协议（`py\LICENSE.txt`）
+- `bin\` koboldcpp —— **AGPL-3.0**（由脚本从官方 Releases 下载，不随本仓库分发）
+- `models\` 里的模型 —— 各自仓库声明的协议（比如 Qwen3 是 Apache-2.0）
+
+程序本体和模型文件都不随本仓库分发，请自行下载并遵守各自的协议。
