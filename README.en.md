@@ -1,10 +1,21 @@
 # Portable Local AI Workbench
 
-A local AI workbench that runs straight off a removable drive. The model and all the programs
-live on this drive: nothing is installed into the system, nothing is written to the
-registry, and unplugging the drive leaves no trace.
-
 **中文** | [English](README.en.md)
+
+A local AI workbench that runs off a USB stick. Plug it into any Windows machine,
+double-click, and you get chat, a model manager, novel writing and a system check.
+
+What it gives you once set up:
+
+- **Fully offline** - conversations never leave the machine, nothing is sent to a server
+- **Nothing installed** - no registry writes, no third-party Python packages; unplug
+  the stick and nothing is left behind
+- **Move it anywhere** - the same models, novels and settings on any Windows machine
+
+> How this differs from "install Ollama" or a hosted AI web page: the model and the
+> whole runtime live on the stick, so **the environment is identical on every Windows
+> machine you plug it into**. Useful when you have no administrator rights, or when you
+> do not want to leave anything behind on someone else's computer.
 
 > Note: this document is in English, but the **web interface itself is in Chinese**.
 > The UI has not been translated yet.
@@ -13,29 +24,56 @@ registry, and unplugging the drive leaves no trace.
 
 ## 1. How to use it
 
-> **⚠️ If you cloned this from GitHub, the first use needs one online install command.**
->
-> The repository holds only the code and the portable Python: **the koboldcpp
-> executables (719 MB) and the model files are not in it** (the reason is explained
-> under "Why does a clone still need one online install step?" in section 2). So the
-> first run is:
->
-> ```
-> powershell -ExecutionPolicy Bypass -File _tools\install.ps1
-> ```
->
-> About a minute, and it needs a network. **After that one step no network is needed
-> again** - starting up, chatting and writing are fully offline. Existing files are
-> skipped, so re-running it is harmless.
+### 1. What you need
 
-1. Plug the drive into a Windows machine (a USB 3.0 port is faster).
-2. Open the `portable-ai` folder and **double-click `启动.bat`** (the launcher).
-3. A console window opens, starts the model server, and then opens your browser.
-   - **The first start is slow** (it unpacks the program and reads the model into
-     memory), so give it time and do not close the window.
-   - That window is the on/off switch: **close it when you are done** and the model
-     server shuts down with it.
-4. The browser shows four entries:
+| Requirement | Detail |
+|---|---|
+| OS | Windows 10 / 11, 64-bit |
+| Disk space | **about 5 GB** - the program (719 MB) plus a model (2-3 GB) |
+| Memory | 8 GB or more recommended; the model has to fit in memory to run |
+| GPU | Optional. An NVIDIA card makes it much faster; without one it runs on CPU (slow but usable) |
+| Privileges | **No administrator needed** - nothing is written to the registry, no service is installed |
+| Network | **Only the first install and the model download need it**; everything after that is offline |
+
+**A USB stick is optional but recommended.** On a stick you can unplug it and use it on
+another machine; if you only ever use one computer, a normal folder works just as well.
+
+Prefer **NTFS**. On FAT32 a single file cannot exceed 4 GB, so large models will not fit.
+
+### 2. First-time install (the only step that needs a network)
+
+Get the code - `git clone` if you use git, or click **Code → Download ZIP** on the GitHub
+page and unpack it wherever you like (USB stick or a local folder).
+
+Then run this once from the project folder in PowerShell (**about 1 minute**):
+```
+powershell -ExecutionPolicy Bypass -File _tools\install.ps1
+```
+
+It does three things:
+
+1. Checks that the portable Python in `py\` is complete (**it is already in the
+   repository, nothing to download**)
+2. Downloads the koboldcpp executables into `bin\` (**719 MB**)
+3. Skips the model, because no model is preset; pass an address to fetch one
+
+> **Why does a clone still need one online install step?**
+> A single koboldcpp file is 607 MB, over GitHub's per-file limit, so it cannot go into
+> the repository. The full reasoning and the alternative download routes are in section 2.
+
+### 3. Every use after that (offline, no network)
+
+In the project folder, **double-click `启动.bat`** (the name means "start"). A console
+window opens, starts the model server, and opens your browser.
+
+- **The first start is slow** (it unpacks the program and reads the model into memory),
+  so give it time and do not close the window.
+- That window is the on/off switch: **close it when you are done** and the model server
+  shuts down with it.
+- Closing browser tabs is fine; the model stays in memory and the next double-click is
+  instant.
+
+The browser shows four entries:
 
 | Entry | What it does |
 |---|---|
