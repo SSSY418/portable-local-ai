@@ -1,10 +1,10 @@
 # Portable Local AI Workbench
 
-A local AI workbench that runs straight off a removable drive. The model and all the
-programs live on the drive: nothing is installed into the system, nothing is written
-to the registry, and unplugging the drive leaves no trace.
+A local AI workbench that runs straight off a removable drive. The model and all the programs
+live on this drive: nothing is installed into the system, nothing is written to the
+registry, and unplugging the drive leaves no trace.
 
-**English** | [中文](README.md)
+**中文** | [English](README.en.md)
 
 > Note: this document is in English, but the **web interface itself is in Chinese**.
 > The UI has not been translated yet.
@@ -97,7 +97,7 @@ A cold start spends its time on three things:
 
 1. **Unpacking** the runtime bundled inside the model server (about 600 MB - the price
    of a single-file executable, roughly 32 seconds);
-2. **Reading the model** (a couple of GB; a USB drive measured 40-97 MB/s, so 40-60 seconds);
+2. **Reading the model**, which depends on its actual size (on a USB drive measured at 40-97 MB/s, a 2-3 GB model takes about 40-60 seconds);
 3. **Uploading weights to VRAM and building the KV cache.**
 
 > The only real speedups are hardware: **more RAM** (enough to hold the whole model file
@@ -178,7 +178,6 @@ leaving a safety margin.
 > GPU exhausted VRAM, and Windows blue-screened with stop code `0x0000010E`
 > (VIDEO_MEMORY_MANAGEMENT_INTERNAL). The right way is to **add a few layers at a time**,
 > watching the VRAM figure on the System Check page, and **stay under 85%**
-> (85% of 4 GB is about 3481 MB - a number learned the hard way).
 
 If a bigger model will not run, lower the layer count, or set it to `0` to run entirely
 on CPU. Also note that **vision models** (a main model plus an `mmproj` projector) push
@@ -215,8 +214,8 @@ The left side is a file tree; the right side is editable, `Ctrl+S` saves.
    for that one section only.
 4. Paste the result back into `第NN节.md` and leave three or four lines of summary in the
    outline's "section summary" field.
-5. When writing the next section, paste the summary along with it - the context window is
-   only 8192, and without the summary the model forgets quickly.
+5. When writing the next section, paste the summary along with it - a small model has a
+   limited context window, and without the summary it forgets quickly.
 
 > In one sentence: **never ask it for a whole chapter at once.** Push section by section,
 > and read each one before moving on.
@@ -350,33 +349,3 @@ another program. Use another machine, or close whatever is holding port 8000.
 - The plain-language box uses the same small local model, so it **occasionally
   mistranslates**. That is why the flow is "show you first -> you confirm -> then run",
   with a final server-side validation behind it.
-
----
-
-## 7. Backup (git)
-
-This project is version-controlled with git. **The repository holds only code you wrote**;
-`bin\` `models\` `py\` are excluded (they can be downloaded again, about 3 GB in total).
-After cloning, run `_tools\install.ps1` once (models are not preset - supply a URL or drop
-a `.gguf` in yourself; see section 2).
-
-```powershell
-# see what changed
-git status
-git diff
-
-# save a version
-git add -A
-git commit -m "describe what changed"
-```
-
-> On a different machine or drive letter, the first `git` command may fail with
-> **"dubious ownership"**. FAT32 does not record file ownership, so git refuses by default.
-> Add one exception:
-> ```
-> git config --global --add safe.directory <project path>
-> ```
-> (for example `D:/portable-ai`). This is git's safety mechanism, not a broken project.
-
-The repository identity was set locally when the repo was created (`portable-ai workbench`);
-**your global git configuration was not touched** (apart from the `safe.directory` line above).
