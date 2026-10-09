@@ -13,14 +13,20 @@ registry, and unplugging the drive leaves no trace.
 
 ## 1. How to use it
 
-> **⚠️ If you cloned this from GitHub, do one extra step first: download the environment.**
-> The portable Python is already in the repository, but koboldcpp (719 MB) and the
-> model are not:
+> **⚠️ If you cloned this from GitHub, the first use needs one online install command.**
+>
+> The repository holds only the code and the portable Python: **the koboldcpp
+> executables (719 MB) and the model files are not in it** (the reason is explained
+> under "Why does a clone still need one online install step?" in section 2). So the
+> first run is:
+>
 > ```
 > powershell -ExecutionPolicy Bypass -File _tools\install.ps1
 > ```
-> That takes about a minute. Then follow the steps below. Files that already exist
-> are skipped, so running it again is harmless.
+>
+> About a minute, and it needs a network. **After that one step no network is needed
+> again** - starting up, chatting and writing are fully offline. Existing files are
+> skipped, so re-running it is harmless.
 
 1. Plug the drive into a Windows machine (a USB 3.0 port is faster).
 2. Open the `portable-ai` folder and **double-click `启动.bat`** (the launcher).
@@ -150,27 +156,44 @@ portable-ai\
   README.md       this file
 ```
 
-> **`py\` (portable Python, 21 MB) is in the repository** - a clone already has it.
+> ### Why does a clone still need one online install step?
 >
-> **`bin\` (koboldcpp, 719 MB) and `models\` (the model files) are not, and are
-> downloaded on first use.** The reason: a single file in `bin\` is 607 MB, over
-> GitHub's 100 MB per-file limit. Git LFS can carry it, but it would fill the free
-> LFS quota (1 GB storage / 1 GB transfer per month), so a few clones by other
-> people would exhaust it. Instead the script downloads from the **official**
-> release, which uses public bandwidth and costs nobody any quota.
+> Because the **git repository holds only the code and the portable Python**.
+> Two large pieces are deliberately left out:
+>
+> | Content | Size | In the repo? |
+> |---|---|---|
+> | Code, `app\`, templates | about 200 KB | ✅ yes |
+> | `py\` portable Python | 21 MB | ✅ yes |
+> | `bin\` the koboldcpp executables | **719 MB** | ❌ no - download it |
+> | `models\` model files | **GBs** | ❌ no - supply your own |
+>
+> **Why `bin\` is not in the repository**: a single file in it is 607 MB, over
+> GitHub's hard **100 MB per-file** limit, so plain git cannot push it. Git LFS
+> can carry it, but 719 MB would eat most of the free LFS quota
+> (1 GB storage / 1 GB transfer per month) - **one clone by someone else would
+> just about use up a month of transfer**, which makes the repository impossible
+> to share.
+>
+> So instead: **after cloning, the script downloads it from the official koboldcpp
+> release.** That uses public bandwidth and **costs nobody any quota**, no matter
+> how many people clone.
+>
+> The trade-off is that the **first use needs one online command** (about a minute):
 >
 > ```
-> # first run, once after cloning (about 1 minute, 719 MB)
+> # required: fetch koboldcpp (existing files are skipped, so re-running is harmless)
 > powershell -ExecutionPolicy Bypass -File _tools\install.ps1
 >
-> # to fetch a model in the same step (supply a URL)
+> # optional: fetch a model in the same step (supply a URL; without it, the model step is skipped)
 > powershell -ExecutionPolicy Bypass -File _tools\install.ps1 `
 >     -ModelUrl "https://hf-mirror.com/<repo>/resolve/main/<file>.gguf"
 >
 > # or download any .gguf yourself and drop it into models\
 > ```
 >
-> Files that already exist are skipped, so running this again is harmless.
+> After that one step nothing needs a network again - starting up, chatting and
+> writing are fully offline.
 
 ---
 
