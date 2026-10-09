@@ -59,7 +59,7 @@ It does three things:
 
 > **Why does a clone still need one online install step?**
 > A single koboldcpp file is 607 MB, over GitHub's per-file limit, so it cannot go into
-> the repository. The full reasoning and the alternative download routes are in section 2.
+> the repository. The full reasoning and the alternative download routes are in section 3.
 
 ### 3. Every use after that (offline, no network)
 
@@ -173,7 +173,23 @@ The startup messages are designed around this:
 
 ---
 
-## 2. What is in here
+## 2. Measurements (on a 4 GB-VRAM machine with a USB drive; for reference only)
+
+> These numbers depend heavily on hardware. A different machine will differ -
+> **do not treat them as a performance promise.**
+
+| Item | Result |
+|---|---|
+| Chat speed | roughly 3-7 characters/second (22 layers on the GPU) |
+| Time to first character | 1-4 seconds |
+| VRAM in use | about 2.5 GB |
+| Model load | **1-4 minutes** (slow cold read from a USB drive; much faster when cached) |
+| Model switch, total | about 240 seconds (including one backend fallback) |
+| Thinking mode off | `/no_think` measured to work; `chat_template_kwargs` does nothing here |
+
+---
+
+## 3. What is in here
 
 ```
 portable-ai\
@@ -235,7 +251,7 @@ portable-ai\
 
 ---
 
-## 3. Adding models
+## 4. Adding models
 
 1. Get a **gguf** model file (ends with `.gguf`) and put it in the `models\` folder.
 2. Go to **Model Manager** and click to switch, or restart `启动.bat`.
@@ -262,7 +278,7 @@ VRAM close to the ceiling and **may cross the 85% line** - weigh that yourself.
 
 ---
 
-## 3b. Writing a novel
+## 4b. Writing a novel
 
 On the home page open **Novel** and click **New novel**, then give it a name.
 It creates this from the templates:
@@ -299,7 +315,7 @@ The left side is a file tree; the right side is editable, `Ctrl+S` saves.
 
 ---
 
-## 4. Adding skills
+## 5. Adding skills
 
 A "skill" is a Python script in `app\skills\` that uses **only the standard library**.
 
@@ -317,7 +333,7 @@ The reference implementation is `app\skills\status.py`, commented section by sec
 
 ---
 
-## 5. Troubleshooting
+## 6. Troubleshooting
 
 ### `启动.bat` flashes and disappears, or prints a pile of errors
 
@@ -369,60 +385,3 @@ so nothing is left behind except VRAM being freed.
 
 Look for that console window - is it still there? If it is, port 8000 may be taken by
 another program. Use another machine, or close whatever is holding port 8000.
-
----
-
-## 6. Status
-
-**Phase 1** (startup -> chat -> system check):
-
-- Portable Python, the model server, a model, `启动.bat`, and the workbench backend
-- Chat page (streaming), System Check page, `status.py`
-
-**Phase 2** (done):
-
-- **Model Manager really switches models** - `modelctl.py` + `switcher.py`. One click
-  starts the switch and the page shows "loading ..." - **no staring at a spinner**
-  because the switch happens in the background and the page polls for progress every
-  2 seconds.
-- **The Novel page works** - two templates in `novels\模板\`, plus creating a book and
-  editing files right in the page.
-- **Plain-language translation** - `router.py` + `skills.json`. The box on the home page
-  shows you what it understood before anything runs.
-
-### Measurements (on a 4 GB-VRAM machine with a USB drive; for reference only)
-
-> These numbers depend heavily on hardware. A different machine will differ -
-> **do not treat them as a performance promise.**
-
-| Item | Result |
-|---|---|
-| Chat speed | roughly 3-7 characters/second (22 layers on the GPU) |
-| Time to first character | 1-4 seconds |
-| VRAM in use | about 2.5 GB |
-| Model load | **1-4 minutes** (slow cold read from a USB drive; much faster when cached) |
-| Model switch, total | about 240 seconds (including one backend fallback) |
-| Thinking mode off | `/no_think` measured to work; `chat_template_kwargs` does nothing here |
-
-### Known rough edges
-
-- The disk speed test in System Check is disturbed by a running model - on the same drive,
-  34 MB/s idle versus **4 MB/s** while the model is busy. So the "SSD or HDD" conclusion is
-  only accurate when measured after loading finishes; the result is cached for 7 days.
-- **The model server unpacks about 600 MB of runtime at startup** (it is a PyInstaller
-  single-file build). That goes into `portable-ai-extract\` under the system temp directory
-  (a system SSD is usually much faster than a USB drive), and **the leftovers from the
-  previous run are cleaned up before every start**, so nothing accumulates.
-  > This one was learned the hard way: repeatedly force-killing the server left unpacked
-  > leftovers behind, and more than 20 `_MEI` folders piled up in the system temp directory
-  > - **tens of GB in total**, eating most of the system drive's free space. Cleaned up, and
-  > automatic cleanup added. Unpacking to a system SSD measured nearly twice as fast as
-  > unpacking to the USB drive, which is why it goes there now.
-- The disk type is **guessed from measured speed**, not reported by the system. Some USB
-  drives do not report a type to Windows at all.
-- **The model dropdown at the top-left of the Chat page is a leftover from phase 1**:
-  switch models on the **Model Manager** page instead. The dead dropdown does not affect
-  chatting (messages go straight to `/api/chat`).
-- The plain-language box uses the same small local model, so it **occasionally
-  mistranslates**. That is why the flow is "show you first -> you confirm -> then run",
-  with a final server-side validation behind it.
