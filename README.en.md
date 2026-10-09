@@ -124,9 +124,9 @@ The startup messages are designed around this:
 
 ```
 portable-ai\
-  bin\            koboldcpp.exe (CUDA build), koboldcpp_nocuda.exe (Vulkan/CPU build)
-  models\         gguf models
-  py\             portable Python 3.12 (standard library only, no third-party packages)
+  bin\            koboldcpp.exe (CUDA build), koboldcpp_nocuda.exe (Vulkan/CPU) · INCLUDED (LFS)
+  models\         gguf models · NOT included, supply your own
+  py\             portable Python 3.12 (standard library only) · INCLUDED
   app\
     workbench.py  backend (Python standard-library http.server)
     launcher.py   find/start/wait-for/stop the model server (shared by launcher and skills)
@@ -141,12 +141,15 @@ portable-ai\
   README.md       this file
 ```
 
-> `bin\` `models\` `py\` are not in git (large files that can be downloaded again,
-> about 3 GB in total). After cloning on another machine, run this once:
-> ```
-> powershell -ExecutionPolicy Bypass -File _tools\install.ps1
-> ```
-> It brings back **portable Python and the model server** (existing files are skipped).
+> **`py\` and `bin\` ship with the repository** - a clone already contains the portable
+> Python and the model server, so there is nothing else to download. Only `models\`
+> (the model files) is left out, and that part is up to you.
+>
+> The two executables in `bin\` total 719 MB, which is over GitHub's 100 MB per-file
+> limit, so they are stored with **Git LFS**. Install Git LFS once before cloning
+> (`git lfs install`); without it, `bin\` only gives you 134-byte pointer files
+> instead of the real programs.
+>
 > **No model is preset** - pick one of these two routes:
 > ```
 > # 1) let the script download one (give it a URL)

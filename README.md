@@ -110,9 +110,9 @@ set PORTABLE_AI_MAXWAIT=600       :: 等模型加载的总上限（秒，默认 
 
 ```
 portable-ai\
-  bin\            koboldcpp.exe（CUDA 版）、koboldcpp_nocuda.exe（Vulkan/CPU 版）
-  models\         gguf 模型
-  py\             便携版 Python 3.12（只用了标准库，没装任何第三方包）
+  bin\            koboldcpp.exe（CUDA 版）、koboldcpp_nocuda.exe（Vulkan/CPU 版）· 已包含（LFS）
+  models\         gguf 模型 · 未包含，需要自己放
+  py\             便携版 Python 3.12（只用了标准库，没装任何第三方包）· 已包含
   app\
     workbench.py  工作台后端（Python 标准库 http.server）
     launcher.py   找 koboldcpp / 启动 / 等就绪 / 停服务（技能和启动器共用）
@@ -126,12 +126,13 @@ portable-ai\
   README.md       就是本文件
 ```
 
-> `bin\` `models\` `py\` 不在 git 里（都是能重新下载的大文件，合计 3 GB 多）。
-> 换台电脑 clone 下来后，先跑一次：
-> ```
-> powershell -ExecutionPolicy Bypass -File _tools\install.ps1
-> ```
-> 它会把**便携版 Python 和 koboldcpp** 补回来（已经有的会跳过）。
+> **`py\` 和 `bin\` 已经放进仓库了** —— clone 下来就有便携版 Python 和模型服务，
+> 不用再下任何东西。只有 `models\`（模型）没放，需要你自己准备。
+>
+> `bin\` 里那两个 exe 共 719 MB，超过了 GitHub 单文件 100 MB 的限制，
+> 所以走的是 **Git LFS**：clone 前要先装一次 Git LFS（`git lfs install`），
+> 否则 `bin\` 里只会拿到 134 字节的指针文件，而不是真正的程序。
+>
 > **模型没有预设**，两种办法二选一：
 > ```
 > # ① 让脚本帮你下（自己给下载地址）
